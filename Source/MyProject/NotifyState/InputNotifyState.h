@@ -12,6 +12,7 @@ class MYPROJECT_API UInputNotifyState : public UAnimNotifyState
 	
 private:
 
+	UPROPERTY()
 	AMyProjectCharacter* Owner;
 
 	virtual void NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, float TotalDuration, const FAnimNotifyEventReference& EventReference);

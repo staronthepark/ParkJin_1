@@ -11,6 +11,7 @@ class MYPROJECT_API UCanclebyMoveNotifyState : public UAnimNotifyState
 	GENERATED_BODY()
 private:
 
+	UPROPERTY()
 	AMyProjectCharacter* Owner;
 
 	virtual void NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, float TotalDuration, const FAnimNotifyEventReference& EventReference);

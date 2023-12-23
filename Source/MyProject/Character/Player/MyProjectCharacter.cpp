@@ -87,9 +87,23 @@ AMyProjectCharacter::AMyProjectCharacter()
 	ShieldEffectComp->SetupAttachment(GetMesh(), FName("POINT_SHIELD"));
 	ShieldEffectComp->SetCollisionProfileName("Shield Effect Comp");
 
-	PlayerActionTickMap.Add(EActionType::ATTACK, [&]()
+	AttackAnimMap.Add(EAttackType::BASICATTACK, TMap<int32, EAnimationType>());
+	AttackAnimMap[EAttackType::BASICATTACK].Add(0, EAnimationType::BASICATTACK_0);
+	AttackAnimMap[EAttackType::BASICATTACK].Add(1, EAnimationType::BASICATTACK_1);
+	AttackAnimMap[EAttackType::BASICATTACK].Add(2, EAnimationType::BASICATTACK_2);
+	AttackAnimMap[EAttackType::BASICATTACK].Add(3, EAnimationType::BASICATTACK_3);
+
+	AttackAnimMap.Add(EAttackType::POWERATTACK, TMap<int32, EAnimationType>());
+	AttackAnimMap[EAttackType::POWERATTACK].Add(0, EAnimationType::POWERATTACK_0);
+	AttackAnimMap[EAttackType::POWERATTACK].Add(1, EAnimationType::POWERATTACK_1);
+	AttackAnimMap[EAttackType::POWERATTACK].Add(2, EAnimationType::POWERATTACK_2);
+
+	AttackAnimMap.Add(EAttackType::SKILLATTACK, TMap<int32, EAnimationType>());
+	AttackAnimMap[EAttackType::SKILLATTACK].Add(0, EAnimationType::SKILLATTACK_0);
+	AttackAnimMap[EAttackType::SKILLATTACK].Add(1, EAnimationType::SKILLATTACK_1);
+
+	PlayerActionTickMap.Add(EActionType::ATTACK, [this]()
 		{
-			//RecoverStamina();
 		});
 
 	for (EPlayerState State : TEnumRange<EPlayerState>())
@@ -106,11 +120,53 @@ AMyProjectCharacter::AMyProjectCharacter()
 		NotifyEventMap.Add(MyAnimType, TMap<bool, TFunction<void()>>());
 	}
 
-	NotifyEventMap[EAnimationType::BASICATTACK].Add(true, [&]()
-		{
-			CurStateType = EPlayerState::CANTACT;
+	NotifyEventMap[EAnimationType::BASICATTACK_0].Add(true, [this]() {
+		CurStateType = EPlayerState::CANTACT;
 		});
-	NotifyEventMap[EAnimationType::POWERATTACK].Add(true, NotifyEventMap[EAnimationType::BASICATTACK][true]);
+	NotifyEventMap[EAnimationType::BASICATTACK_0].Add(false, [this]() {
+		GetCharacterMovement()->bAllowPhysicsRotationDuringAnimRootMotion = false;
+		});
+	NotifyEventMap[EAnimationType::BASICATTACK_1].Add(true, NotifyEventMap[EAnimationType::BASICATTACK_0][true]);
+	NotifyEventMap[EAnimationType::BASICATTACK_1].Add(false, NotifyEventMap[EAnimationType::BASICATTACK_0][false]);
+	NotifyEventMap[EAnimationType::BASICATTACK_2].Add(true, NotifyEventMap[EAnimationType::BASICATTACK_0][true]);
+	NotifyEventMap[EAnimationType::BASICATTACK_2].Add(false, NotifyEventMap[EAnimationType::BASICATTACK_0][false]);
+	NotifyEventMap[EAnimationType::BASICATTACK_3].Add(true, NotifyEventMap[EAnimationType::BASICATTACK_0][true]);
+	NotifyEventMap[EAnimationType::BASICATTACK_3].Add(false, NotifyEventMap[EAnimationType::BASICATTACK_0][false]);
+
+	NotifyEventMap[EAnimationType::POWERATTACK_0].Add(true, NotifyEventMap[EAnimationType::BASICATTACK_0][true]);
+	NotifyEventMap[EAnimationType::POWERATTACK_0].Add(false, NotifyEventMap[EAnimationType::BASICATTACK_0][false]);
+	NotifyEventMap[EAnimationType::POWERATTACK_1].Add(true, NotifyEventMap[EAnimationType::BASICATTACK_0][true]);
+	NotifyEventMap[EAnimationType::POWERATTACK_1].Add(false, NotifyEventMap[EAnimationType::BASICATTACK_0][false]);
+	NotifyEventMap[EAnimationType::POWERATTACK_2].Add(true, NotifyEventMap[EAnimationType::BASICATTACK_0][true]);
+	NotifyEventMap[EAnimationType::POWERATTACK_2].Add(false, NotifyEventMap[EAnimationType::BASICATTACK_0][false]);
+
+	NotifyEventMap[EAnimationType::SKILLATTACK_0].Add(true, NotifyEventMap[EAnimationType::BASICATTACK_0][true]);
+	NotifyEventMap[EAnimationType::SKILLATTACK_0].Add(false, NotifyEventMap[EAnimationType::BASICATTACK_0][false]);
+	NotifyEventMap[EAnimationType::SKILLATTACK_1].Add(true, NotifyEventMap[EAnimationType::BASICATTACK_0][true]);
+	NotifyEventMap[EAnimationType::SKILLATTACK_1].Add(false, NotifyEventMap[EAnimationType::BASICATTACK_0][false]);
+
+	InputEventMap[EPlayerState::NONE][EInputType::SPRINT].Add(true, [this]() {
+		SprintBegin();
+		});
+
+	InputEventMap[EPlayerState::NONE][EInputType::SPRINT].Add(false, [this]() {
+		SprintEnd();
+		});
+
+	InputEventMap[EPlayerState::NONE][EInputType::ATTACK].Add(true, [this]() {
+		MaxAttackIndex = 4;
+		CurAttackType = EAttackType::BASICATTACK;
+		ComboAttack();
+		});
+	InputEventMap[EPlayerState::AFTERATTACK][EInputType::ATTACK].Add(true, InputEventMap[EPlayerState::NONE][EInputType::ATTACK][true]);
+
+	InputEventMap[EPlayerState::NONE][EInputType::POWERATTACK].Add(true, [this]() {
+		MaxAttackIndex = 3;
+		CurAttackType = EAttackType::POWERATTACK;
+		ComboAttack();
+		});
+	InputEventMap[EPlayerState::AFTERATTACK][EInputType::POWERATTACK].Add(true, InputEventMap[EPlayerState::NONE][EInputType::POWERATTACK][true]);
+
 
 //	InputEventMap[EPlayerState::NONE][EActionType::SKILL].Add(true, [&]()
 //		{
@@ -415,10 +471,7 @@ AMyProjectCharacter::AMyProjectCharacter()
 	{
 		if (!MontageEndEventMap.Contains(AnimType))
 		{
-			MontageEndEventMap.Add(AnimType, [&]()
-				{
-
-				});
+			MontageEndEventMap.Add(AnimType, []() {});
 		}
 	}
 
@@ -426,45 +479,38 @@ AMyProjectCharacter::AMyProjectCharacter()
 	{
 		if (!PlayerActionTickMap.Contains(MyActionType))
 		{
-			PlayerActionTickMap.Add(MyActionType, [&]()
-				{
-
-				});
+			PlayerActionTickMap.Add(MyActionType, []() {});
 		}
 	}
 
 	for (EPlayerState StateType : TEnumRange<EPlayerState>())
 	{
-		if (!InputEventMap.Contains(StateType))
-		{
-			InputEventMap.Add(StateType, TMap<EInputType, TMap<bool, TFunction<void()>>>());
-		}
-
 		for (EInputType InputType : TEnumRange<EInputType>())
 		{
 			if (!InputEventMap[StateType].Contains(InputType))
 			{
-				InputEventMap[StateType].Add(InputType, TMap<bool, TFunction<void()>>());
-				InputEventMap[StateType][InputType].Add(true, [&]()
-					{
-
-					});
-				InputEventMap[StateType][InputType].Add(false, [&]()
-					{
-
-					});
+				InputEventMap[StateType].Add(InputType, TMap<bool, TFunction<void()>>());				
+			}
+			if (!InputEventMap[StateType][InputType].Contains(true))
+			{
+				InputEventMap[StateType][InputType].Add(true, []() {});
+			}
+			if (!InputEventMap[StateType][InputType].Contains(false))
+			{
+				InputEventMap[StateType][InputType].Add(false, []() {});
 			}
 		}
 	}
 
 	for (EAnimationType MyAnimType : TEnumRange<EAnimationType>())
 	{
-		for (bool Value = false; Value != true; Value = true)
+		if (!NotifyEventMap[MyAnimType].Contains(true))
 		{
-			if (NotifyEventMap[MyAnimType].Contains(Value))
-			{
-				NotifyEventMap[MyAnimType].Add(Value, [&]() {});
-			}
+			NotifyEventMap[MyAnimType].Add(true, []() {});
+		}
+		if (!NotifyEventMap[MyAnimType].Contains(false))
+		{
+			NotifyEventMap[MyAnimType].Add(false, []() {});
 		}
 	}
 }
@@ -472,6 +518,8 @@ AMyProjectCharacter::AMyProjectCharacter()
 void AMyProjectCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	CurStateType = EPlayerState::NONE;
 
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 	SetSpeed(PlayerDataStruct.OriginSpeed);
@@ -485,45 +533,22 @@ void AMyProjectCharacter::BeginPlay()
 	}
 
 	AnimInstance = Cast<UPlayerAnimInstance>(GetMesh()->GetAnimInstance());
-}
-
-void AMyProjectCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent)
-{
-	if (UEnhancedInputComponent* EnhancedInputComponent = CastChecked<UEnhancedInputComponent>(PlayerInputComponent))
-	{		
-		EnhancedInputComponent->BindAction(InputActionMap[EInputType::MOVE], ETriggerEvent::Triggered, this, &AMyProjectCharacter::Move);
-		EnhancedInputComponent->BindAction(InputActionMap[EInputType::MOVE], ETriggerEvent::None, this, &AMyProjectCharacter::MoveEnd);
-
-		EnhancedInputComponent->BindAction(InputActionMap[EInputType::ROTATE], ETriggerEvent::Triggered, this, &AMyProjectCharacter::Look);
-
-		EnhancedInputComponent->BindAction(InputActionMap[EInputType::SPRINT], ETriggerEvent::Started, this, &AMyProjectCharacter::InputStarted);
-		EnhancedInputComponent->BindAction(InputActionMap[EInputType::SPRINT], ETriggerEvent::None, this, &AMyProjectCharacter::InputEnded);
-
-		EnhancedInputComponent->BindAction(InputActionMap[EInputType::LOCKON], ETriggerEvent::Started, this, &AMyProjectCharacter::LockOn);
-
-		EnhancedInputComponent->BindAction(InputActionMap[EInputType::SPRINT], ETriggerEvent::Started, this, &AMyProjectCharacter::InputStarted);
-
-
-		//BindAction<UInputBufferComponent, const UInputAction*, ETriggerEvent, const FVector>(Action, ETriggerEvent::Started, this, &UInputBufferComponent::OnBufferedAction, Action, ETriggerEvent::Started, moveInput)
-	}
+	AnimInstance->OnMontageEnded.AddDynamic(this, &AMyProjectCharacter::MontageEnded);
 }
 
 void AMyProjectCharacter::Move(const FInputActionValue& Value)
 {
 	MovementVector = Value.Get<FVector2D>();
 
-	if (Controller != nullptr)
-	{
-		const FRotator Rotation = Controller->GetControlRotation();
-		YawRotation = FRotator(0, Rotation.Yaw, 0);
+	const FRotator Rotation = Controller->GetControlRotation();
+	YawRotation = FRotator(0, Rotation.Yaw, 0);
 
-		const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+	const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
 	
-		const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+	const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 
-		AddMovementInput(ForwardDirection, MovementVector.Y);
-		AddMovementInput(RightDirection, MovementVector.X);
-	}
+	AddMovementInput(ForwardDirection, MovementVector.Y);
+	AddMovementInput(RightDirection, MovementVector.X);
 }
 
 void AMyProjectCharacter::MoveEnd()
@@ -535,11 +560,13 @@ void AMyProjectCharacter::Look(const FInputActionValue& Value)
 {
 	FVector2D LookAxisVector = Value.Get<FVector2D>();
 
-	if (Controller != nullptr)
-	{
-		AddControllerYawInput(LookAxisVector.X);
-		AddControllerPitchInput(LookAxisVector.Y);
-	}
+	AddControllerYawInput(LookAxisVector.X);
+	AddControllerPitchInput(LookAxisVector.Y);
+}
+
+void AMyProjectCharacter::CallInputFunc(EPlayerState state, EInputType type, bool IsPress)
+{
+	InputEventMap[state][type][IsPress]();
 }
 
 void AMyProjectCharacter::Tick(float DeltaTime)
@@ -590,14 +617,24 @@ void AMyProjectCharacter::LockOnBegin()
 
 void AMyProjectCharacter::Attack()
 {
-	ComboAttackStart();
+	//ComboAttackStart();
 }
 
-void AMyProjectCharacter::ComboAttackStart()
+void AMyProjectCharacter::ComboAttack()
 {
+	GetCharacterMovement()->bAllowPhysicsRotationDuringAnimRootMotion = true;
 	CurStateType = EPlayerState::BEFOREATTACK;
-	PlayerCurAttackIndex = 0;
-	IsRotate = false;
+
+	if (PlayerCurAttackIndex >= MaxAttackIndex || PlayerCurAttackIndex == 0) {
+		PlayerCurAttackIndex = 0;
+	}
+
+	if (MontageMap.Contains(CurAnimType)) {
+		AnimInstance->Montage_Stop(0.2f, MontageMap[CurAnimType]);
+		AnimInstance->Montage_Stop(0.2f, MontageMap[CurAnimType]);
+	}
+
+	PlayMontageAnimation(AttackAnimMap[CurAttackType][PlayerCurAttackIndex++]);
 }
 
 void AMyProjectCharacter::LockOnEnd()
@@ -620,9 +657,18 @@ void AMyProjectCharacter::SprintEnd()
 
 void AMyProjectCharacter::PlayMontageAnimation(EAnimationType type)
 {
-	AnimInstance->Montage_Stop(0.2f, MontageMap[CurAnimType]);
 	CurAnimType = type;
 	AnimInstance->Montage_Play(MontageMap[CurAnimType]);
+}
+
+void AMyProjectCharacter::MontageEnded(UAnimMontage* Montage, bool bInterrupted)
+{
+	if (!bInterrupted) {
+		ComboAttackEnd();
+		SetAnimType(EAnimationType::NONE);
+		SetStateType(EPlayerState::NONE);
+		SetActionType(EActionType::NONE);
+	}
 }
 
 void AMyProjectCharacter::EventNotify(bool IsBegin)

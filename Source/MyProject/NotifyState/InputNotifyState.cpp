@@ -7,11 +7,16 @@ void UInputNotifyState::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSeque
 {
 	if (Owner == nullptr)
 	{
-		Owner = Cast<AMyProjectCharacter>(MeshComp);
+		Owner = Cast<AMyProjectCharacter>(MeshComp->GetOwner());
 	}
 
+	if (Owner != nullptr) {
+		Owner->SetStateType(EPlayerState::AFTERATTACK);
+	}
 }
 
 void UInputNotifyState::NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, const FAnimNotifyEventReference& EventReference)
 {
+	if (Owner != nullptr) {
+	}
 }

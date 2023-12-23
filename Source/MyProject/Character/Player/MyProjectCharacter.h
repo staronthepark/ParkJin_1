@@ -26,12 +26,21 @@ enum class EAnimationType : uint8
 
 	PARRING,
 
-	BASICATTACK,
-	POWERATTACK,
+	BASICATTACK_0,
+	BASICATTACK_1,
+	BASICATTACK_2,
+	BASICATTACK_3,
+
+	POWERATTACK_0,
+	POWERATTACK_1,
+	POWERATTACK_2,
+
+	SKILLATTACK_0,
+	SKILLATTACK_1,
+
 	DODGEATTACK,
 	RUNATTACK,
-	RUNPOWERATTACK,
-	SKILLATTACK,
+
 	EXECUTIONBOSS,
 
 	ENDOFRUN,
@@ -44,27 +53,23 @@ enum class EAnimationType : uint8
 	DOOROPEN,
 
 	DEAD,
-	DEADLOOP,
-	DEADLOOP2,
 
 	HEAL,
 
 	SAVESTART,
 	SAVELOOP,
 	SAVEEND,
-	ACTIVESAVEPOINT,
 
 	SHIELDSTART,
 	SHIELDLOOP,
 	SHIELDEND,
-	EOSTOEXECUTION,
 
 	SHIELDATTACK,
 	SHIELDMOVE,
 	SHIELDKNOCKBACK,
 };
 
-ENUM_RANGE_BY_FIRST_AND_LAST(EAnimationType, EAnimationType::BASICDODGE, EAnimationType::SHIELDKNOCKBACK);
+ENUM_RANGE_BY_FIRST_AND_LAST(EAnimationType, EAnimationType::NONE, EAnimationType::SHIELDKNOCKBACK);
 
 UENUM(BlueprintType)
 enum class EPlayerState : uint8
@@ -78,7 +83,7 @@ enum class EPlayerState : uint8
 	SPRINT,
 	CANTACT,
 };
-ENUM_RANGE_BY_FIRST_AND_LAST(EPlayerState, EPlayerState::AFTERATTACK, EPlayerState::CANTACT);
+ENUM_RANGE_BY_FIRST_AND_LAST(EPlayerState, EPlayerState::NONE, EPlayerState::CANTACT);
 
 UENUM(BlueprintType)
 enum class EActionType : uint8
@@ -97,7 +102,7 @@ enum class EActionType : uint8
 	SHIELD,
 	SKILL,
 };
-ENUM_RANGE_BY_FIRST_AND_LAST(EActionType, EActionType::DODGE, EActionType::SKILL);
+ENUM_RANGE_BY_FIRST_AND_LAST(EActionType, EActionType::NONE, EActionType::SKILL);
 
 UENUM(BlueprintType)
 enum class EInputType : uint8
@@ -117,7 +122,7 @@ enum class EInputType : uint8
 	LOCKON,
 };
 
-ENUM_RANGE_BY_FIRST_AND_LAST(EInputType, EInputType::DODGE, EInputType::LOCKON);
+ENUM_RANGE_BY_FIRST_AND_LAST(EInputType, EInputType::NONE, EInputType::LOCKON);
 
 
 UENUM(BlueprintType)
@@ -127,6 +132,15 @@ enum class ECameraDirection : uint8
 	DOWN,
 	LEFT,
 	RIGHT
+};
+
+UENUM(BlueprintType)
+enum class EAttackType : uint8
+{
+	NONE,
+	BASICATTACK,
+	POWERATTACK,
+	SKILLATTACK,
 };
 
 USTRUCT(BlueprintType)
@@ -251,8 +265,6 @@ struct FPlayerCharacterDataStruct : public FCharacterStat
 
 class UInputAction;
 
-
-
 UCLASS(config=Game)
 class AMyProjectCharacter : public ABaseCharacter
 {
@@ -303,11 +315,8 @@ class AMyProjectCharacter : public ABaseCharacter
 	UPROPERTY(EditAnyWhere, Meta = (AllowPrivateAccess = true))
 	TMap<EAnimationType, UAnimMontage*> MontageMap;
 
-public:
 	UPROPERTY(EditAnyWhere, Category = Input, Meta = (AllowPrivateAccess = true))
 	TMap<EInputType, UInputAction*> InputActionMap;
-
-private:
 
 	UPROPERTY(EditAnywhere, Meta = (AllowPrivateAccess = true))
 	UBoxComponent* ParryingCollision;
@@ -337,6 +346,7 @@ private:
 	int32 CurRotateIndex;
 	int32 CurHealCount;
 	int32 PlayerCurAttackIndex;
+	int32 MaxAttackIndex;
 	int32 AxisX;
 	int32 AxisY;
 
@@ -351,7 +361,6 @@ private:
 	float HeadYawRoation;
 
 	bool IsCollisionCamera;
-	bool CancleByMove;
 	bool CanExecution;
 	bool IsExecute;
 	bool CanNextAttack;
@@ -362,9 +371,9 @@ private:
 	bool IsInputPad;
 	bool CanShieldDeploy;
 	bool CanUseSkill;
-	bool IsPhaseTwo;
 	bool IsHeal;
-	bool IsRotate;
+
+	bool CanclebyMove;
 
 	FVector PlayerForwardDirection;
 	FVector PlayerRightDirection;
@@ -389,6 +398,7 @@ private:
 
 	EPlayerState CurStateType;
 	EActionType CurActionType;
+	EAttackType CurAttackType;
 	EAnimationType CurAnimType;
 
 	TArray<TArray<float>> ForwardRotation;
@@ -418,13 +428,10 @@ private:
 	TMap<EActionType, int32>PlayerMaxAttackIndex;
 	TMap<bool, TMap<bool, float>>SpeedMap;
 	TMap<bool, TFunction<void()>> LockOnCameraSettingMap;
+	TMap<EAttackType, TMap<int32, EAnimationType>> AttackAnimMap;
+
 public:
 	AMyProjectCharacter();
-	
-
-//protected:
-
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 	virtual void BeginPlay();
 
@@ -459,6 +466,7 @@ public:
 	//virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) {} override;
 
 
+	void CallInputFunc(EPlayerState state, EInputType type, bool IsPress);
 
 	void Move(const FInputActionValue& Value);
 	void MoveEnd();
@@ -507,11 +515,9 @@ public:
 
 	void SkillAttack() {}
 
-	void FadeIn() {}
+	void FadeIn() {}	
 
-	void ComboAttackEnd() {}
-
-	void ComboAttackStart();
+	void ComboAttack();
 
 	void Dodge() {}
 
@@ -546,7 +552,6 @@ public:
 
 	void ShieldOn() {}
 
-
 	void ChangeActionType(EActionType type) {}
 
 	void SetSprint() {}
@@ -575,8 +580,31 @@ public:
 
 	bool CanActivate(int32 SoulCount) { return 0; }
 	
+	FORCEINLINE FVector2D GetMovementVector() { return MovementVector; }
+
+	FORCEINLINE EPlayerState * GetCurStateType() { return &CurStateType; }
+
+	FORCEINLINE bool IsActiveCanclebyMove() { return CanclebyMove; }
+
+	FORCEINLINE void SetStateType(EPlayerState type) { CurStateType = type; }
+
+	FORCEINLINE void ActiveCanclebyMove(bool value) { CanclebyMove = value; }
+
+	FORCEINLINE void SetAnimType(EAnimationType type) { CurAnimType = type; }
+
+	FORCEINLINE void SetActionType(EActionType type) { CurActionType = type; }
+
 	FORCEINLINE void SetSpeed(float speed) { GetCharacterMovement()->MaxWalkSpeed = speed; }
 
+	FORCEINLINE void ComboAttackEnd() { 
+		PlayerCurAttackIndex = 0; 
+		CanclebyMove = false;
+	}
+
+	FORCEINLINE void StopPlayerMontage() {
+		AnimInstance->Montage_Stop(0.2f, MontageMap[CurAnimType]);
+		MontageEnded(nullptr, false);
+	}
 
 	UFUNCTION()
 		void OnEnemyDetectionBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult) {}
@@ -605,4 +633,6 @@ public:
 	UFUNCTION()
 		void OnShieldOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult) {}
 			
+	UFUNCTION()
+		void MontageEnded(UAnimMontage* Montage, bool bInterrupted);
 };

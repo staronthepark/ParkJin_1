@@ -15,5 +15,8 @@ AMyProjectGameMode::AMyProjectGameMode()
 	}
 
 	static ConstructorHelpers::FClassFinder<AMyPlayerController> PlayerControllerBPClass(TEXT("/Game/01_BluePrints/00_BP/00_Character/00_Player/BP_Controller"));
-	PlayerControllerClass = PlayerControllerBPClass.Class;
+	if (PlayerControllerBPClass.Class != NULL)
+	{
+		PlayerControllerClass = PlayerControllerBPClass.Class;
+	}
 }

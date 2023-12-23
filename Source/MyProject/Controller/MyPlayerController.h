@@ -16,12 +16,33 @@ class MYPROJECT_API AMyPlayerController : public APlayerController
 {
 	GENERATED_BODY()
 
-		AMyProjectCharacter* character;
+private:
 
+	AMyProjectCharacter* character;
+
+	EPlayerState* PlayerState;
+
+	UPROPERTY(EditAnyWhere, Category = Input, Meta = (AllowPrivateAccess = true))
+	TMap<EInputType, UInputAction*> InputActionMap;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	class UInputMappingContext* DefaultMappingContext;
+
+public:
 	virtual void SetupInputComponent() override;
 
 	virtual void BeginPlay();
 
-	void Move(const FInputActionValue& Value);
 	void Look(const FInputActionValue& Value);
+	void Move(const FInputActionValue& Value);
+	void PressMove();
+
+	void MoveEnd();
+
+	void PressSprint();
+	void UnPressSprint();
+
+	void PressAttack();
+
+	void PressLockOn();
 };
