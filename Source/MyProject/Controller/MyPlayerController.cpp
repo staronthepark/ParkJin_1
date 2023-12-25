@@ -81,6 +81,11 @@ void AMyPlayerController::PressInteraction()
 	character->CallInputFunc(*PlayerState, EInputType::INTERACTION, true);
 }
 
+void AMyPlayerController::PressQuit()
+{
+	character->CallInputFunc(EPlayerState::NONE, EInputType::QUIT, true);
+}
+
 void AMyPlayerController::PressPowerAttack()
 {
 	character->SetAttackType(EAttackType::POWERATTACK);
@@ -103,7 +108,7 @@ void AMyPlayerController::UnPressSkillAttack()
 
 void AMyPlayerController::PressLockOn()
 {
-	character->LockOn();
+	character->CallInputFunc(EPlayerState::NONE, EInputType::LOCKON, true);
 }
 
 void AMyPlayerController::SetupInputComponent()
@@ -136,6 +141,8 @@ void AMyPlayerController::SetupInputComponent()
 	EnhancedInputComponent->BindAction(InputActionMap[EInputType::INTERACTION], ETriggerEvent::Started, this, &AMyPlayerController::PressInteraction);
 
 	EnhancedInputComponent->BindAction(InputActionMap[EInputType::HEAL], ETriggerEvent::Started, this, &AMyPlayerController::PressHeal);
+
+	EnhancedInputComponent->BindAction(InputActionMap[EInputType::QUIT], ETriggerEvent::Started, this, &AMyPlayerController::PressQuit);
 
 	EnhancedInputComponent->BindAction(InputActionMap[EInputType::LOCKON], ETriggerEvent::Started, this, &AMyPlayerController::PressLockOn);
 }

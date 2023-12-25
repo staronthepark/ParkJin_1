@@ -1,27 +1,32 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "BaseInteractionActor.h"
 
-// Sets default values
 ABaseInteractionActor::ABaseInteractionActor()
 {
- 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false;
+
+	MyRootComponent = CreateDefaultSubobject<UPrimitiveComponent>(TEXT("My Root Component"));
+	RootComponent = MyRootComponent;
+
+//	TArray<>
+	TArray<UActorComponent*> Array = GetComponentsByClass(UFXSystemComponent::StaticClass());
+
+	for (int32 i = 0; i < Array.Num(); i++)
+	{
+		InteractionCompArray.Add(Cast<UFXSystemComponent>(Array[i]));
+	}
 
 }
 
-// Called when the game starts or when spawned
 void ABaseInteractionActor::BeginPlay()
 {
 	Super::BeginPlay();
 	
 }
 
-// Called every frame
-void ABaseInteractionActor::Tick(float DeltaTime)
+void ABaseInteractionActor::ExecuteEvent()
 {
-	Super::Tick(DeltaTime);
-
+	for (int32 i = 0; i < InteractionCompArray.Num(); i++)
+	{
+		InteractionCompArray[i]->SetActive(true);
+	}
 }
-

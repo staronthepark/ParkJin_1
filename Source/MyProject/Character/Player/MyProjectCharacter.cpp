@@ -121,24 +121,35 @@ AMyProjectCharacter::AMyProjectCharacter()
 	InputEventMap[EPlayerState::NONE][EInputType::SHIELD].Add(true, [this]() {
 		SetStateType(EPlayerState::CANTACT);
 		SetSpeed(PlayerDataStruct.PlayerWalkSpeed);
-		AnimInstance->Montage_JumpToSection(FName("Start"), MontageMap[EAnimationType::SHIELDSTART]);
-		PlayMontageAnimation(EAnimationType::SHIELDSTART);
+		PlayMontageAnimation(EAnimationType::SHIELD);
 		AnimInstance->ActivateWalk(true);
 		});
 
 	InputEventMap[EPlayerState::CANTACT][EInputType::SHIELD].Add(false, [this]() {
-		if (AnimInstance->Montage_IsPlaying(MontageMap[EAnimationType::SHIELDSTART])) {
-		AnimInstance->Montage_Stop(0.2f, MontageMap[EAnimationType::SHIELDSTART]);
+		if (AnimInstance->Montage_IsPlaying(MontageMap[EAnimationType::SHIELD])) {
+		AnimInstance->Montage_Stop(0.2f, MontageMap[EAnimationType::SHIELD]);
 		AnimInstance->ActivateWalk(false);
 		SetSpeed(PlayerDataStruct.OriginSpeed);
 		SetStateType(EPlayerState::NONE);
 		}
 		});
 
+	InputEventMap[EPlayerState::NONE][EInputType::LOCKON].Add(true, [this]() {
+		LockOn();
+		});
+
+	InputEventMap[EPlayerState::NONE][EInputType::QUIT].Add(true, [this]() {
+		if (CurAnimType == EAnimationType::SAVE) {
+			if (AnimInstance->Montage_GetCurrentSection() == FName("Loop")) {
+			AnimInstance->Montage_JumpToSection(FName("End"), MontageMap[EAnimationType::SAVE]);
+			}
+		}
+		});
+
 	InputEventMap[EPlayerState::NONE][EInputType::INTERACTION].Add(true, [this]() {
 		if (InteractionActor) {
-			//InteractionActor->ExecuteEvent();
-			//StartInteraction(InteractionActor->GetInteractionAnimType());
+			InteractionActor->ExecuteEvent();
+			StartInteraction(InteractionActor->GetInteractionAnimType());
 		}
 		});
 
@@ -198,9 +209,9 @@ AMyProjectCharacter::AMyProjectCharacter()
 
 	NotifyEventMap[EAnimationType::BASICATTACK_0].Add(true, [this]() {
 		CurStateType = EPlayerState::CANTACT;
-		GetCharacterMovement()->bAllowPhysicsRotationDuringAnimRootMotion = false;
 		});
 	NotifyEventMap[EAnimationType::BASICATTACK_0].Add(false, [this]() {
+		GetCharacterMovement()->bAllowPhysicsRotationDuringAnimRootMotion = false;
 		});
 
 	NotifyEventMap[EAnimationType::BASICATTACK_1].Add(true, NotifyEventMap[EAnimationType::BASICATTACK_0][true]);
@@ -425,6 +436,7 @@ void AMyProjectCharacter::SprintEnd()
 
 void AMyProjectCharacter::StartInteraction(EAnimationType type)
 {
+	GetCharacterMovement()->bAllowPhysicsRotationDuringAnimRootMotion = false;
 	SetStateType(EPlayerState::CANTACT);
 	PlayMontageAnimation(type);
 }

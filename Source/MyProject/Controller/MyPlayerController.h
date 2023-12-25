@@ -59,4 +59,6 @@ public:
 	void PressAttack();
 
 	void PressInteraction();
+
+	void PressQuit();
 };

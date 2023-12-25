@@ -1,26 +1,31 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "../Flag/Enums.h"
+#include "Particles/ParticleSystemComponent.h"
 #include "BaseInteractionActor.generated.h"
 
 UCLASS()
 class MYPROJECT_API ABaseInteractionActor : public AActor
 {
 	GENERATED_BODY()
-	
-public:	
-	// Sets default values for this actor's properties
-	ABaseInteractionActor();
 
 protected:
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
+	UPROPERTY(Editanywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = true))
+	EAnimationType PlayerAnimType;
+
+	UPROPERTY(Editanywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = true))
+	UPrimitiveComponent* MyRootComponent;
+
+	TArray<UFXSystemComponent*> InteractionCompArray;
 
 public:	
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
+	ABaseInteractionActor();
 
+	virtual void BeginPlay() override;
+
+	virtual void ExecuteEvent();
+
+	FORCEINLINE virtual EAnimationType GetInteractionAnimType() { return PlayerAnimType; };
 };

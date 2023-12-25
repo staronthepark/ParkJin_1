@@ -40,13 +40,9 @@ enum class EAnimationType : uint8
 
 	HEAL,
 
-	SAVESTART,
-	SAVELOOP,
-	SAVEEND,
+	SAVE,
 
-	SHIELDSTART,
-	SHIELDLOOP,
-	SHIELDEND,
+	SHIELD,
 
 	SHIELDATTACK,
 	SHIELDMOVE,
@@ -102,9 +98,10 @@ enum class EInputType : uint8
 	SHIELD,
 	SKILL,
 	LOCKON,
+	QUIT,
 };
 
-ENUM_RANGE_BY_FIRST_AND_LAST(EInputType, EInputType::NONE, EInputType::LOCKON);
+ENUM_RANGE_BY_FIRST_AND_LAST(EInputType, EInputType::NONE, EInputType::QUIT);
 
 
 UENUM(BlueprintType)
