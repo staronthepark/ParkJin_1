@@ -38,11 +38,25 @@ public:
 	void PressMove();
 
 	void MoveEnd();
+	void Dodge();
 
 	void PressSprint();
 	void UnPressSprint();
 
-	void PressAttack();
+	void PressShield();
+	void UnPressShield();
+
+	void PressPowerAttack();
+	void UnPressPowerAttack();
+
+	void PressSkillAttack();
+	void UnPressSkillAttack();
 
 	void PressLockOn();
+
+	void PressHeal();
+
+	void PressAttack();
+
+	void PressInteraction();
 };

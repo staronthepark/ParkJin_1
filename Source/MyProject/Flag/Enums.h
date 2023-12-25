@@ -1,0 +1,126 @@
+#pragma once
+
+UENUM(BlueprintType)
+enum class EAnimationType : uint8
+{
+	NONE,
+	BASICDODGE,
+	BATTLEDODGE,
+	BACKSTEP,
+
+	PARRING,
+
+	BASICATTACK_0,
+	BASICATTACK_1,
+	BASICATTACK_2,
+	BASICATTACK_3,
+
+	POWERATTACK_0,
+	POWERATTACK_1,
+	POWERATTACK_2,
+
+	SKILLATTACK_0,
+	SKILLATTACK_1,
+
+	DODGEATTACK,
+	RUNATTACK,
+
+	EXECUTIONBOSS,
+
+	ENDOFRUN,
+	ENDOFSPRINT,
+	ENDOFHEAL,
+
+	HIT,
+	SUPERHIT,
+
+	DOOROPEN,
+
+	DEAD,
+
+	HEAL,
+
+	SAVESTART,
+	SAVELOOP,
+	SAVEEND,
+
+	SHIELDSTART,
+	SHIELDLOOP,
+	SHIELDEND,
+
+	SHIELDATTACK,
+	SHIELDMOVE,
+	SHIELDKNOCKBACK,
+};
+
+ENUM_RANGE_BY_FIRST_AND_LAST(EAnimationType, EAnimationType::NONE, EAnimationType::SHIELDKNOCKBACK);
+
+UENUM(BlueprintType)
+enum class EPlayerState : uint8
+{
+	NONE,
+	AFTERATTACK,
+	BEFOREATTACK,
+	CANWALK,
+	SPRINT,
+	CANTACT,
+};
+ENUM_RANGE_BY_FIRST_AND_LAST(EPlayerState, EPlayerState::NONE, EPlayerState::CANTACT);
+
+UENUM(BlueprintType)
+enum class EActionType : uint8
+{
+	NONE,
+	DODGE,
+	ATTACK,
+	POWERATTACK,
+	PARRING,
+	MOVE,
+	ROTATE,
+	HEAL,
+	HIT,
+	INTERACTION,
+	DEAD,
+	SHIELD,
+	SKILL,
+};
+ENUM_RANGE_BY_FIRST_AND_LAST(EActionType, EActionType::NONE, EActionType::SKILL);
+
+UENUM(BlueprintType)
+enum class EInputType : uint8
+{
+	NONE,
+	DODGE,
+	ATTACK,
+	POWERATTACK,
+	PARRING,
+	MOVE,
+	ROTATE,
+	SPRINT,
+	HEAL,
+	INTERACTION,
+	SHIELD,
+	SKILL,
+	LOCKON,
+};
+
+ENUM_RANGE_BY_FIRST_AND_LAST(EInputType, EInputType::NONE, EInputType::LOCKON);
+
+
+UENUM(BlueprintType)
+enum class ECameraDirection : uint8
+{
+	UP,
+	DOWN,
+	LEFT,
+	RIGHT
+};
+
+UENUM(BlueprintType)
+enum class EAttackType : uint8
+{
+	NONE,
+	BASICATTACK,
+	POWERATTACK,
+	SKILLATTACK,
+};

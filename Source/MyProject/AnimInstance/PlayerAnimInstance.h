@@ -18,6 +18,9 @@ class MYPROJECT_API UPlayerAnimInstance : public UBaseAnimInstance
 	bool IsLockOn;
 
 	UPROPERTY(Editanywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	bool IsWalk;
+
+	UPROPERTY(Editanywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	float AxisX;
 
 	UPROPERTY(Editanywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
@@ -27,6 +30,8 @@ class MYPROJECT_API UPlayerAnimInstance : public UBaseAnimInstance
 	float Speed;
 
 public:
+
+	FORCEINLINE	void ActivateWalk(bool Value) { IsWalk = Value; }
 
 	FORCEINLINE	void SetAxisX(float Value) { AxisX = Value; }
 	FORCEINLINE	void SetAxisY(float Value) { AxisY = Value; }

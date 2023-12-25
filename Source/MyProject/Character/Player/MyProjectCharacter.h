@@ -11,137 +11,13 @@
 #include "InputActionValue.h"
 #include "Containers/Queue.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "../../InteractionActor/BaseInteractionActor.h"
 #include "Particles/ParticleSystemComponent.h"
+#include "../../Flag/Enums.h"
 //#include "ActorSequenceComponent.h"
 //#include "ActorSequencePlayer.h"
 #include "MyProjectCharacter.generated.h"
 
-UENUM(BlueprintType)
-enum class EAnimationType : uint8
-{
-	NONE,
-	BASICDODGE,
-	BATTLEDODGE,
-	BACKSTEP,
-
-	PARRING,
-
-	BASICATTACK_0,
-	BASICATTACK_1,
-	BASICATTACK_2,
-	BASICATTACK_3,
-
-	POWERATTACK_0,
-	POWERATTACK_1,
-	POWERATTACK_2,
-
-	SKILLATTACK_0,
-	SKILLATTACK_1,
-
-	DODGEATTACK,
-	RUNATTACK,
-
-	EXECUTIONBOSS,
-
-	ENDOFRUN,
-	ENDOFSPRINT,
-	ENDOFHEAL,
-
-	HIT,
-	SUPERHIT,
-
-	DOOROPEN,
-
-	DEAD,
-
-	HEAL,
-
-	SAVESTART,
-	SAVELOOP,
-	SAVEEND,
-
-	SHIELDSTART,
-	SHIELDLOOP,
-	SHIELDEND,
-
-	SHIELDATTACK,
-	SHIELDMOVE,
-	SHIELDKNOCKBACK,
-};
-
-ENUM_RANGE_BY_FIRST_AND_LAST(EAnimationType, EAnimationType::NONE, EAnimationType::SHIELDKNOCKBACK);
-
-UENUM(BlueprintType)
-enum class EPlayerState : uint8
-{
-	NONE,
-	AFTERATTACK,
-	BEFOREATTACK,
-	CANWALK,
-	CANATTACK,
-	RUN,
-	SPRINT,
-	CANTACT,
-};
-ENUM_RANGE_BY_FIRST_AND_LAST(EPlayerState, EPlayerState::NONE, EPlayerState::CANTACT);
-
-UENUM(BlueprintType)
-enum class EActionType : uint8
-{
-	NONE,
-	DODGE,
-	ATTACK,
-	POWERATTACK,
-	PARRING,
-	MOVE,
-	ROTATE,
-	HEAL,
-	HIT,
-	INTERACTION,
-	DEAD,
-	SHIELD,
-	SKILL,
-};
-ENUM_RANGE_BY_FIRST_AND_LAST(EActionType, EActionType::NONE, EActionType::SKILL);
-
-UENUM(BlueprintType)
-enum class EInputType : uint8
-{
-	NONE,
-	DODGE,
-	ATTACK,
-	POWERATTACK,
-	PARRING,
-	MOVE,
-	ROTATE,
-	SPRINT,
-	HEAL,
-	INTERACTION,
-	SHIELD,
-	SKILL,
-	LOCKON,
-};
-
-ENUM_RANGE_BY_FIRST_AND_LAST(EInputType, EInputType::NONE, EInputType::LOCKON);
-
-
-UENUM(BlueprintType)
-enum class ECameraDirection : uint8
-{
-	UP,
-	DOWN,
-	LEFT,
-	RIGHT
-};
-
-UENUM(BlueprintType)
-enum class EAttackType : uint8
-{
-	NONE,
-	BASICATTACK,
-	POWERATTACK,
-	SKILLATTACK,
-};
 
 USTRUCT(BlueprintType)
 struct FPlayerDamageInfo
@@ -275,12 +151,6 @@ class AMyProjectCharacter : public ABaseCharacter
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class UCameraComponent* FollowCamera;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
-	class UInputMappingContext* DefaultMappingContext;
-
-	UPROPERTY(EditAnywhere, Meta = (AllowPrivateAccess = true))
-	UNiagaraComponent* ShieldEffectComp;
 
 	UPROPERTY(EditAnywhere, Meta = (AllowPrivateAccess = true))
 	UNiagaraComponent* SkillTrailComp;
@@ -301,9 +171,6 @@ class AMyProjectCharacter : public ABaseCharacter
 	USkeletalMeshComponent* PlayerSKMesh;
 
 	UPROPERTY(EditAnywhere, Meta = (AllowPrivateAccess = true))
-	UStaticMeshComponent* ShieldMeshComp;
-
-	UPROPERTY(EditAnywhere, Meta = (AllowPrivateAccess = true))
 	USceneComponent* HeadBoneLocation;
 
 	UPROPERTY(EditAnywhere, Meta = (AllowPrivateAccess = true))
@@ -315,14 +182,14 @@ class AMyProjectCharacter : public ABaseCharacter
 	UPROPERTY(EditAnyWhere, Meta = (AllowPrivateAccess = true))
 	TMap<EAnimationType, UAnimMontage*> MontageMap;
 
-	UPROPERTY(EditAnyWhere, Category = Input, Meta = (AllowPrivateAccess = true))
-	TMap<EInputType, UInputAction*> InputActionMap;
-
 	UPROPERTY(EditAnywhere, Meta = (AllowPrivateAccess = true))
 	UBoxComponent* ParryingCollision;
 
 	UPROPERTY(EditAnyWhere, Meta = (AllowPrivateAccess = true))
 	TMap<EActionType, float>PlayerUseStaminaMap;
+
+	UPROPERTY(EditAnywhere, Meta = (AllowPrivateAccess = true))
+	UStaticMeshComponent* ShieldMeshComp;
 
 	UPROPERTY()
 	UBoxComponent* ShieldOverlapComp;
@@ -337,7 +204,7 @@ class AMyProjectCharacter : public ABaseCharacter
 	//	UActorSequencePlayer* BossExecutionSequncePlayer;
 
 	UPROPERTY()
-		UPlayerAnimInstance* AnimInstance;
+	UPlayerAnimInstance* AnimInstance;
 
 	FCameraSetting OriginCameraSetting;
 	FCameraSetting ShieldCameraSetting;
@@ -371,7 +238,6 @@ class AMyProjectCharacter : public ABaseCharacter
 	bool IsInputPad;
 	bool CanShieldDeploy;
 	bool CanUseSkill;
-	bool IsHeal;
 
 	bool CanclebyMove;
 
@@ -395,6 +261,7 @@ class AMyProjectCharacter : public ABaseCharacter
 	FTimerHandle DeadTimer;
 
 	ABaseCharacter* ExecutionCharacter;
+	ABaseInteractionActor* InteractionActor;
 
 	EPlayerState CurStateType;
 	EActionType CurActionType;
@@ -489,10 +356,6 @@ public:
 
 	void LookTarget();
 
-	void InputStarted();
-
-	void InputEnded();
-
 	void ResetGame() {}
 
 	void SetPlayerForwardRotAndDir() {}
@@ -506,14 +369,6 @@ public:
 	void Parring() {}
 
 	void LoadMonster(FString name) {}
-
-	void Attack();
-
-	void BasicAttack() {}
-
-	void PowerAttack() {}
-
-	void SkillAttack() {}
 
 	void FadeIn() {}	
 
@@ -533,6 +388,8 @@ public:
 
 	void SprintBegin();
 	void SprintEnd();
+
+	void StartInteraction(EAnimationType type);
 
 	void PlayMontageAnimation(EAnimationType type);
 
@@ -588,6 +445,8 @@ public:
 
 	FORCEINLINE void SetStateType(EPlayerState type) { CurStateType = type; }
 
+	FORCEINLINE UPlayerAnimInstance* GetAnimInstance() { return AnimInstance; }
+
 	FORCEINLINE void ActiveCanclebyMove(bool value) { CanclebyMove = value; }
 
 	FORCEINLINE void SetAnimType(EAnimationType type) { CurAnimType = type; }
@@ -604,6 +463,22 @@ public:
 	FORCEINLINE void StopPlayerMontage() {
 		AnimInstance->Montage_Stop(0.2f, MontageMap[CurAnimType]);
 		MontageEnded(nullptr, false);
+	}
+
+	FORCEINLINE void SetAttackType(EAttackType type) {
+		CurAttackType = type;
+		if (CurAttackType == EAttackType::POWERATTACK) {
+			if (PlayerCurAttackIndex == 3) {
+				PlayerCurAttackIndex = 1;
+			}
+			MaxAttackIndex = 3;
+		}
+		else if (CurAttackType == EAttackType::SKILLATTACK) {
+			MaxAttackIndex = 2;
+		}
+		else {
+			MaxAttackIndex = 4;
+		}
 	}
 
 	UFUNCTION()
@@ -635,4 +510,10 @@ public:
 			
 	UFUNCTION()
 		void MontageEnded(UAnimMontage* Montage, bool bInterrupted);
+
+	UFUNCTION()
+		void CapsuleOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+	UFUNCTION()
+		void CapsuleOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 };

@@ -45,9 +45,6 @@ AMyProjectCharacter::AMyProjectCharacter()
 	WeaponMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PlayerWeaponMesh"));
 	WeaponMesh->SetupAttachment(GetMesh(), FName("Weapon_bone"));
 
-	ShieldMeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Shield Mesh"));
-	ShieldMeshComp->SetupAttachment(GetMesh(), FName("POINT_SHIELD"));
-
 	ShieldAttackOverlap = CreateDefaultSubobject<UBoxComponent>(TEXT("Shield Attack Overlap"));
 	ShieldAttackOverlap->SetupAttachment(GetMesh());
 
@@ -67,6 +64,9 @@ AMyProjectCharacter::AMyProjectCharacter()
 	ParryingCollision->SetupAttachment(GetMesh());
 	ParryingCollision->SetCollisionProfileName("Parrying");
 
+	ShieldMeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Shield Mesh"));
+	ShieldMeshComp->SetupAttachment(GetMesh(), FName("POINT_SHIELD"));
+
 	//WeaponOverlapStaticMeshCollision = CreateDefaultSubobject<UBoxComponent>(TEXT("Right Box"));
 	//WeaponOverlapStaticMeshCollision->SetupAttachment(WeaponMesh);
 	//WeaponOverlapStaticMeshCollision->SetCollisionProfileName("Weapon");
@@ -82,10 +82,6 @@ AMyProjectCharacter::AMyProjectCharacter()
 	SkillAuraComp = CreateDefaultSubobject<UNiagaraComponent>(TEXT("SKill Aura"));
 	SkillAuraComp->SetupAttachment(GetMesh(), FName("Weapon_bone"));
 	SkillAuraComp->SetCollisionProfileName("Skill Aura");
-
-	ShieldEffectComp = CreateDefaultSubobject<UNiagaraComponent>(TEXT("Shield Effect Comp"));
-	ShieldEffectComp->SetupAttachment(GetMesh(), FName("POINT_SHIELD"));
-	ShieldEffectComp->SetCollisionProfileName("Shield Effect Comp");
 
 	AttackAnimMap.Add(EAttackType::BASICATTACK, TMap<int32, EAnimationType>());
 	AttackAnimMap[EAttackType::BASICATTACK].Add(0, EAnimationType::BASICATTACK_0);
@@ -120,12 +116,93 @@ AMyProjectCharacter::AMyProjectCharacter()
 		NotifyEventMap.Add(MyAnimType, TMap<bool, TFunction<void()>>());
 	}
 
+//Input Event Map
+
+	InputEventMap[EPlayerState::NONE][EInputType::SHIELD].Add(true, [this]() {
+		SetStateType(EPlayerState::CANTACT);
+		SetSpeed(PlayerDataStruct.PlayerWalkSpeed);
+		AnimInstance->Montage_JumpToSection(FName("Start"), MontageMap[EAnimationType::SHIELDSTART]);
+		PlayMontageAnimation(EAnimationType::SHIELDSTART);
+		AnimInstance->ActivateWalk(true);
+		});
+
+	InputEventMap[EPlayerState::CANTACT][EInputType::SHIELD].Add(false, [this]() {
+		if (AnimInstance->Montage_IsPlaying(MontageMap[EAnimationType::SHIELDSTART])) {
+		AnimInstance->Montage_Stop(0.2f, MontageMap[EAnimationType::SHIELDSTART]);
+		AnimInstance->ActivateWalk(false);
+		SetSpeed(PlayerDataStruct.OriginSpeed);
+		SetStateType(EPlayerState::NONE);
+		}
+		});
+
+	InputEventMap[EPlayerState::NONE][EInputType::INTERACTION].Add(true, [this]() {
+		if (InteractionActor) {
+			//InteractionActor->ExecuteEvent();
+			//StartInteraction(InteractionActor->GetInteractionAnimType());
+		}
+		});
+
+	InputEventMap[EPlayerState::NONE][EInputType::SPRINT].Add(true, [this]() {
+		SprintBegin();
+		});
+
+	InputEventMap[EPlayerState::NONE][EInputType::HEAL].Add(true, [this]() {
+		AnimInstance->ActivateWalk(true);
+		ShieldMeshComp->SetVisibility(false);
+		SetStateType(EPlayerState::CANTACT);
+		PlayMontageAnimation(EAnimationType::HEAL);
+		SetSpeed(PlayerDataStruct.PlayerWalkSpeed);
+		});
+
+	InputEventMap[EPlayerState::NONE][EInputType::SPRINT].Add(false, [this]() {
+		SprintEnd();
+		});
+
+	InputEventMap[EPlayerState::NONE][EInputType::ATTACK].Add(true, [this]() {
+		ComboAttack();
+		});
+
+	InputEventMap[EPlayerState::NONE][EInputType::DODGE].Add(true, [this]() {
+		SetStateType(EPlayerState::CANTACT);
+		MovementVector == FVector2D::ZeroVector ? PlayMontageAnimation(EAnimationType::BACKSTEP) : PlayMontageAnimation(EAnimationType::BASICDODGE);
+		});
+
+	InputEventMap[EPlayerState::AFTERATTACK][EInputType::DODGE].Add(true, [this]() {
+		InputEventMap[EPlayerState::NONE][EInputType::DODGE][true]();
+		if (CurAnimType != EAnimationType::BACKSTEP) {
+			GetCharacterMovement()->bAllowPhysicsRotationDuringAnimRootMotion = true;
+		}
+		});
+
+	InputEventMap[EPlayerState::AFTERATTACK][EInputType::ATTACK].Add(true, [this]() {
+		if (CurAnimType == EAnimationType::BASICDODGE || CurAnimType == EAnimationType::BACKSTEP) {
+			SetStateType(EPlayerState::CANTACT);
+			GetCharacterMovement()->bAllowPhysicsRotationDuringAnimRootMotion = false;
+			PlayMontageAnimation(EAnimationType::DODGEATTACK);
+		}
+		else {
+			InputEventMap[EPlayerState::NONE][EInputType::ATTACK][true]();
+		}
+		});
+
+	InputEventMap[EPlayerState::SPRINT][EInputType::ATTACK].Add(true, [this]() {
+		SetStateType(EPlayerState::CANTACT);
+		PlayMontageAnimation(EAnimationType::RUNATTACK);
+		PlayerCurAttackIndex += 1;
+		});
+
+	InputEventMap[EPlayerState::SPRINT][EInputType::SPRINT].Add(false, InputEventMap[EPlayerState::NONE][EInputType::SPRINT][false]);
+
+
+//Notify Event Map
+
 	NotifyEventMap[EAnimationType::BASICATTACK_0].Add(true, [this]() {
 		CurStateType = EPlayerState::CANTACT;
-		});
-	NotifyEventMap[EAnimationType::BASICATTACK_0].Add(false, [this]() {
 		GetCharacterMovement()->bAllowPhysicsRotationDuringAnimRootMotion = false;
 		});
+	NotifyEventMap[EAnimationType::BASICATTACK_0].Add(false, [this]() {
+		});
+
 	NotifyEventMap[EAnimationType::BASICATTACK_1].Add(true, NotifyEventMap[EAnimationType::BASICATTACK_0][true]);
 	NotifyEventMap[EAnimationType::BASICATTACK_1].Add(false, NotifyEventMap[EAnimationType::BASICATTACK_0][false]);
 	NotifyEventMap[EAnimationType::BASICATTACK_2].Add(true, NotifyEventMap[EAnimationType::BASICATTACK_0][true]);
@@ -145,327 +222,35 @@ AMyProjectCharacter::AMyProjectCharacter()
 	NotifyEventMap[EAnimationType::SKILLATTACK_1].Add(true, NotifyEventMap[EAnimationType::BASICATTACK_0][true]);
 	NotifyEventMap[EAnimationType::SKILLATTACK_1].Add(false, NotifyEventMap[EAnimationType::BASICATTACK_0][false]);
 
-	InputEventMap[EPlayerState::NONE][EInputType::SPRINT].Add(true, [this]() {
-		SprintBegin();
+	NotifyEventMap[EAnimationType::DODGEATTACK].Add(true, NotifyEventMap[EAnimationType::BASICATTACK_0][true]);
+	NotifyEventMap[EAnimationType::DODGEATTACK].Add(false, NotifyEventMap[EAnimationType::BASICATTACK_0][false]);
+
+	NotifyEventMap[EAnimationType::RUNATTACK].Add(true, NotifyEventMap[EAnimationType::BASICATTACK_0][true]);
+	NotifyEventMap[EAnimationType::RUNATTACK].Add(false, NotifyEventMap[EAnimationType::BASICATTACK_0][false]);
+
+
+	NotifyEventMap[EAnimationType::BASICDODGE].Add(true, [this]() {
+		Imotal = true;
+		});
+	NotifyEventMap[EAnimationType::BASICDODGE].Add(false, [this]() {
+		Imotal = false;
+		SetStateType(EPlayerState::AFTERATTACK);
 		});
 
-	InputEventMap[EPlayerState::NONE][EInputType::SPRINT].Add(false, [this]() {
-		SprintEnd();
+	NotifyEventMap[EAnimationType::HEAL].Add(true, [this]() {
+
+		});
+	NotifyEventMap[EAnimationType::HEAL].Add(false, [this]() {
+		ShieldMeshComp->SetVisibility(true);
+		AnimInstance->ActivateWalk(false);
+		SetSpeed(PlayerDataStruct.OriginSpeed);
 		});
 
-	InputEventMap[EPlayerState::NONE][EInputType::ATTACK].Add(true, [this]() {
-		MaxAttackIndex = 4;
-		CurAttackType = EAttackType::BASICATTACK;
-		ComboAttack();
-		});
-	InputEventMap[EPlayerState::AFTERATTACK][EInputType::ATTACK].Add(true, InputEventMap[EPlayerState::NONE][EInputType::ATTACK][true]);
-
-	InputEventMap[EPlayerState::NONE][EInputType::POWERATTACK].Add(true, [this]() {
-		MaxAttackIndex = 3;
-		CurAttackType = EAttackType::POWERATTACK;
-		ComboAttack();
-		});
-	InputEventMap[EPlayerState::AFTERATTACK][EInputType::POWERATTACK].Add(true, InputEventMap[EPlayerState::NONE][EInputType::POWERATTACK][true]);
+	NotifyEventMap[EAnimationType::BACKSTEP].Add(true, NotifyEventMap[EAnimationType::BASICDODGE][true]);
+	NotifyEventMap[EAnimationType::BACKSTEP].Add(false, NotifyEventMap[EAnimationType::BASICDODGE][false]);
 
 
-//	InputEventMap[EPlayerState::NONE][EActionType::SKILL].Add(true, [&]()
-//		{
-//			//if (IsGrab)
-//			//	Parring();
-//			//else
-//			//	SkillAttack();
-//		});
-//
-//	InputEventMap[EPlayerState::NONE][EActionType::DODGE].Add(true, [&]()
-//		{
-//			//Dodge();
-//		});
-//
-//	InputEventMap[EPlayerState::NONE][EActionType::ATTACK].Add(true, [&]()
-//		{
-//			//BasicAttack();
-//		});
-//
-//	InputEventMap[EPlayerState::NONE][EActionType::POWERATTACK].Add(true, [&]()
-//		{
-//			//PowerAttack();
-//		});
-//
-//	InputEventMap[EPlayerState::NONE][EActionType::PARRING].Add(true, [&]()
-//		{
-//			//if (IsGrab)
-//			//	Parring();
-//		});
-//
-//	InputEventMap[EPlayerState::NONE][EActionType::MOVE].Add(true, [&]()
-//		{
-//			//ChangActionType(EActionType::MOVE);
-//			//SetSpeed(SpeedMap[IsLockOn || IsGrab][false]);
-//			//AnimInstance->PlayerAnimationType = AnimationType::NONE;
-//		});
-//	InputEventMap[EPlayerState::NONE][EActionType::MOVE].Add(false, [&]()
-//		{
-//			//if (AxisX == 1 && AxisY == 1)
-//			//{
-//			//	SetSpeed(0);
-//			//	ChangeMontageAnimation(AnimationType::ENDOFRUN);
-//			//	ChangActionType(EActionType::NONE);
-//			//}
-//		});
-//
-//	InputEventMap[EPlayerState::NONE][EActionType::HEAL].Add(true, [&]()
-//		{
-//			//if (CurHealCount > 0 && !IsHeal)
-//			//{
-//			//	UseItem();
-//			//	IsHeal = true;
-//			//	GetCharacterMovement()->MaxWalkSpeed = PlayerDataStruct.PlayerWalkSpeed;
-//			//}
-//		});
-//
-//	InputEventMap[EPlayerState::NONE][EActionType::SHIELD].Add(true, [&]()
-//		{
-//			//if (!CanShieldDeploy)return;
-//			//if (PlayerDataStruct.SoulCount <= 0 || !CanShieldDeploy)return;
-//			//ChangeMontageAnimation(AnimationType::SHIELDSTART);
-//			//
-//			//if (AxisY != 1 || AxisX != 1)
-//			//{
-//			//	AnimInstance->BodyBlendAlpha = 0.0f;
-//			//	ChangActionType(EActionType::MOVE);
-//			//}
-//			//else
-//			//{
-//			//	ChangActionType(EActionType::NONE);
-//			//}
-//			//
-//			//IsCollisionCamera = false;
-//			//ComboAttackEnd();
-//			//GetCharacterMovement()->MaxWalkSpeed = PlayerDataStruct.PlayerWalkSpeed;
-//			//
-//			//IsGrab = true;
-//			//ShieldOn();
-//			//ShieldOverlapComp->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-//			//CameraBoom11->CameraLagSpeed = 30.0f;
-//			//SetCameraTarget(GrabSocketOffset, GrabCameraLength);
-//		});
-//	InputEventMap[EPlayerState::NONE][EActionType::SHIELD].Add(false, [&]()
-//		{
-//			//if (!IsGrab)return;
-//			//IsGrab = false;
-//			//if (AxisY == 1 && AxisX == 1)
-//			//{
-//			//	ChangeMontageAnimation(AnimationType::SHIELDEND);
-//			//}
-//			//else
-//			//{
-//			//	SetSpeed(SpeedMap[IsLockOn || IsGrab][false]);
-//			//	PlayerCurAction = EPlayerState::RUN;
-//			//}
-//			//
-//			//AnimInstance->BodyBlendAlpha = 1.0f;
-//			//ShieldOff();
-//			//ShoulderView(IsShoulderView);
-//		});
-//	InputEventMap[EPlayerState::NONE][EActionType::INTERACTION].Add(false, [&]()
-//		{
-//			//if (!IsGrab)return;
-//			//IsGrab = false;
-//			//if (AxisY == 1 && AxisX == 1)
-//			//{
-//			//	ChangeMontageAnimation(AnimationType::SHIELDEND);
-//			//}
-//			//else
-//			//{
-//			//	SetSpeed(SpeedMap[IsLockOn || IsGrab][false]);
-//			//	PlayerCurAction = EPlayerState::RUN;
-//			//}
-//			//
-//			//AnimInstance->BodyBlendAlpha = 1.0f;
-//			//ShieldOff();
-//			//ShoulderView(IsShoulderView);
-//		});
-//	InputEventMap[EPlayerState::NONE][EActionType::INTERACTION].Add(false, [&]()
-//		{
-//			//if (!IsGrab)return;
-//			//IsGrab = false;
-//			//if (AxisY == 1 && AxisX == 1)
-//			//{
-//			//	ChangeMontageAnimation(AnimationType::SHIELDEND);
-//			//}
-//			//else
-//			//{
-//			//	SetSpeed(SpeedMap[IsLockOn || IsGrab][false]);
-//			//	PlayerCurAction = EPlayerState::RUN;
-//			//}
-//			//
-//			//AnimInstance->BodyBlendAlpha = 1.0f;
-//			//ShieldOff();
-//			//ShoulderView(IsShoulderView);
-//		});
-//
-//	InputEventMap[EPlayerState::BEFOREATTACK][EActionType::MOVE].Add(true, InputEventMap[EPlayerState::NONE][EActionType::MOVE][true]);
-//	InputEventMap[EPlayerState::BEFOREATTACK][EActionType::MOVE].Add(false, InputEventMap[EPlayerState::NONE][EActionType::MOVE][false]);
-//
-//	InputEventMap[EPlayerState::RUN][EActionType::SKILL].Add(true, InputEventMap[EPlayerState::NONE][EActionType::SKILL][true]);
-//	InputEventMap[EPlayerState::RUN][EActionType::ATTACK].Add(true, InputEventMap[EPlayerState::NONE][EActionType::ATTACK][true]);
-//	InputEventMap[EPlayerState::RUN][EActionType::POWERATTACK].Add(true, InputEventMap[EPlayerState::NONE][EActionType::POWERATTACK][true]);
-//	InputEventMap[EPlayerState::RUN][EActionType::PARRING].Add(true, InputEventMap[EPlayerState::NONE][EActionType::PARRING][true]);
-//	InputEventMap[EPlayerState::RUN][EActionType::MOVE].Add(true, InputEventMap[EPlayerState::NONE][EActionType::MOVE][true]);
-//	InputEventMap[EPlayerState::RUN][EActionType::MOVE].Add(false, InputEventMap[EPlayerState::NONE][EActionType::MOVE][false]);
-//
-//	InputEventMap[EPlayerState::RUN][EActionType::HEAL].Add(true, InputEventMap[EPlayerState::NONE][EActionType::HEAL][true]);
-//	//InputEventMap[EPlayerState::RUN][EActionType::INTERACTION].Add(true, InputEventMap[EPlayerState::NONE][EActionType::INTERACTION][true]);
-//	//InputEventMap[EPlayerState::RUN][EActionType::INTERACTION].Add(false, InputEventMap[EPlayerState::NONE][EActionType::INTERACTION][false]);
-//	InputEventMap[EPlayerState::RUN][EActionType::SHIELD].Add(true, [&]()
-//		{
-//			//InputEventMap[EPlayerState::NONE][EActionType::SHIELD][true]();
-//			//if (IsGrab)
-//			//	AnimInstance->BodyBlendAlpha = 0.0f;
-//
-//		});
-//	InputEventMap[EPlayerState::RUN][EActionType::SHIELD].Add(false, [&]()
-//		{
-//			//InputEventMap[EPlayerState::NONE][EActionType::SHIELD][false]();
-//		});
-//
-//	InputEventMap[EPlayerState::AFTERATTACK][EActionType::DODGE].Add(true, InputEventMap[EPlayerState::NONE][EActionType::DODGE][true]);
-//	InputEventMap[EPlayerState::AFTERATTACK][EActionType::ATTACK].Add(true, InputEventMap[EPlayerState::NONE][EActionType::ATTACK][true]);
-//	InputEventMap[EPlayerState::AFTERATTACK][EActionType::POWERATTACK].Add(true, InputEventMap[EPlayerState::NONE][EActionType::POWERATTACK][true]);
-//	InputEventMap[EPlayerState::AFTERATTACK][EActionType::PARRING].Add(true, InputEventMap[EPlayerState::NONE][EActionType::PARRING][true]);
-//	InputEventMap[EPlayerState::AFTERATTACK][EActionType::MOVE].Add(true, [&]()
-//		{
-//			//if (!CancleByMove || AnimInstance->PlayerAnimationType == AnimationType::SUPERHIT)return;
-//			//SetSpeed(SpeedMap[IsLockOn || IsGrab][false]);
-//			//ChangActionType(EActionType::MOVE);
-//			//ComboAttackEnd();
-//			//CancleByMove = false;
-//		});
-//	InputEventMap[EPlayerState::AFTERATTACK][EActionType::MOVE].Add(false, [&]()
-//		{
-//			//if (!CancleByMove || AnimInstance->PlayerAnimationType == AnimationType::SUPERHIT)return;
-//			//if (CurEActionType == EActionType::MOVE)
-//			//{
-//			//	if (AxisX == 1 && AxisY == 1)
-//			//	{
-//			//		SetSpeed(0);
-//			//		ChangActionType(EActionType::NONE);
-//			//	}
-//			//	CancleByMove = false;
-//			//}
-//		});
-//	InputEventMap[EPlayerState::AFTERATTACK][EActionType::SHIELD].Add(true, InputEventMap[EPlayerState::NONE][EActionType::SHIELD][true]);
-//	InputEventMap[EPlayerState::AFTERATTACK][EActionType::SHIELD].Add(false, InputEventMap[EPlayerState::NONE][EActionType::SHIELD][false]);
-//
-//	InputEventMap[EPlayerState::AFTERATTACK][EActionType::SKILL].Add(true, InputEventMap[EPlayerState::NONE][EActionType::SKILL][true]);
-//
-//	InputEventMap[EPlayerState::CANWALK][EActionType::MOVE].Add(true, [&]()
-//		{
-//			//ChangActionType(EActionType::MOVE);
-//			//GetCharacterMovement()->MaxWalkSpeed = PlayerDataStruct.PlayerWalkSpeed;
-//			//AnimInstance->BodyBlendAlpha = 0.0f;
-//		});
-//	InputEventMap[EPlayerState::CANWALK][EActionType::MOVE].Add(false, [&]()
-//		{
-//			//if (AxisY == 1 && AxisX == 1)
-//			//	AnimInstance->BodyBlendAlpha = 1.0f;
-//
-//		});
-//	InputEventMap[EPlayerState::CANWALK][EActionType::SHIELD].Add(false, InputEventMap[EPlayerState::NONE][EActionType::SHIELD][false]);
-//
-//	InputEventMap[EPlayerState::CANTACT][EActionType::SHIELD].Add(false, [&]()
-//		{
-//			//	IsGrab = false;
-//		});
-//
-//
-//	InputEventMap[EPlayerState::CANATTACK][EActionType::ATTACK].Add(true, [&]()
-//		{
-//			//BasicAttack();
-//		});
-//
-//	InputEventMap[EPlayerState::SPRINT][EActionType::SKILL].Add(true, [&]()
-//		{
-//		});
-//	InputEventMap[EPlayerState::SPRINT][EActionType::SKILL].Add(false, [&]()
-//		{
-//		});
-//	InputEventMap[EPlayerState::SPRINT][EActionType::INTERACTION].Add(true, [&]()
-//		{
-//		});
-//	InputEventMap[EPlayerState::SPRINT][EActionType::INTERACTION].Add(false, [&]()
-//		{
-//		});
-//	InputEventMap[EPlayerState::SPRINT][EActionType::DODGE].Add(true, [&]()
-//		{
-//			//Dodge();
-//		});
-//	InputEventMap[EPlayerState::SPRINT][EActionType::DODGE].Add(false, [&]()
-//		{
-//			//IsSprint = false;
-//			//LockOnCameraSettingMap[false]();
-//			//if (CurEActionType == EActionType::MOVE &&
-//			//	AnimInstance->PlayerAnimationType != AnimationType::ENDOFSPRINT &&
-//			//	AnimInstance->PlayerAnimationType != AnimationType::HEAL &&
-//			//	AnimInstance->PlayerAnimationType != AnimationType::SUPERHIT)
-//			//{
-//			//	PlayerCurAction = EPlayerState::RUN;
-//			//	Run();
-//			//}
-//		});
-//	InputEventMap[EPlayerState::SPRINT][EActionType::ATTACK].Add(true, [&]()
-//		{
-//			//if (UseStamina(PlayerUseStaminaMap[EActionType::POWERATTACK]))
-//			//{
-//			//	PlayerCurAttackIndex++;
-//			//	ChangActionType(EActionType::ATTACK);
-//			//	ChangeMontageAnimation(AnimationType::RUNPOWERATTACK);
-//			//	CanNextAttack = false;
-//			//	AObjectPool::GetInstance().SpawnObject(AObjectPool::GetInstance().ObjectArray[25].ObjClass, GetActorLocation(), FRotator::ZeroRotator);
-//			//}
-//		});
-//	InputEventMap[EPlayerState::SPRINT][EActionType::POWERATTACK].Add(true, [&]()
-//		{
-//			//if (UseStamina(PlayerUseStaminaMap[EActionType::POWERATTACK]))
-//			//{
-//			//	PlayerCurAttackIndex++;
-//			//	ChangActionType(EActionType::ATTACK);
-//			//	ChangeMontageAnimation(AnimationType::RUNPOWERATTACK);
-//			//	CanNextAttack = false;
-//			//	AObjectPool::GetInstance().SpawnObject(AObjectPool::GetInstance().ObjectArray[25].ObjClass, GetActorLocation(), FRotator::ZeroRotator);
-//			//}
-//		});
-//	InputEventMap[EPlayerState::SPRINT][EActionType::PARRING].Add(true, InputEventMap[EPlayerState::NONE][EActionType::PARRING][true]);
-//	InputEventMap[EPlayerState::SPRINT][EActionType::MOVE].Add(true, [&]()
-//		{
-//			//ChangActionType(EActionType::MOVE);
-//			////AnimInstance->BodyBlendAlpha = 0.0f;
-//			//SetSpeed(SpeedMap[IsLockOn || IsGrab][true]);
-//
-//		});
-//	InputEventMap[EPlayerState::SPRINT][EActionType::MOVE].Add(false, [&]()
-//		{
-//			//if (AxisX == 1 && AxisY == 1)
-//			//{
-//			//	SetSpeed(0);
-//			//	ChangeMontageAnimation(AnimationType::ENDOFSPRINT);
-//			//	ChangActionType(EActionType::NONE);
-//			//}
-//		});
-//	InputEventMap[EPlayerState::SPRINT][EActionType::HEAL].Add(true, InputEventMap[EPlayerState::NONE][EActionType::HEAL][true]);
-//	//InputEventMap[EPlayerState::SPRINT][EActionType::INTERACTION].Add(true, InputEventMap[EPlayerState::NONE][EActionType::INTERACTION][true]);
-//	InputEventMap[EPlayerState::SPRINT][EActionType::SHIELD].Add(true, [&]()
-//		{
-//			//if (IsSprint && AnimInstance->PlayerAnimationType == AnimationType::SPRINT)
-//			//{
-//			//	InputEventMap[EPlayerState::SPRINT][EActionType::DODGE][false]();
-//			//}
-//			//InputEventMap[EPlayerState::NONE][EActionType::SHIELD][true]();
-//			//
-//			//if (IsGrab)
-//			//	AnimInstance->BodyBlendAlpha = 0.0f;
-//		});
-//	InputEventMap[EPlayerState::SPRINT][EActionType::SHIELD].Add(false, InputEventMap[EPlayerState::NONE][EActionType::SHIELD][false]);
+//Add Empty Func
 
 	for (EAnimationType AnimType : TEnumRange<EAnimationType>())
 	{
@@ -519,21 +304,18 @@ void AMyProjectCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
+	MaxAttackIndex = 4;
+	CurAttackType = EAttackType::BASICATTACK;
 	CurStateType = EPlayerState::NONE;
 
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 	SetSpeed(PlayerDataStruct.OriginSpeed);
 
-	if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
-	{
-		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
-		{
-			Subsystem->AddMappingContext(DefaultMappingContext, 0);
-		}
-	}
-
 	AnimInstance = Cast<UPlayerAnimInstance>(GetMesh()->GetAnimInstance());
 	AnimInstance->OnMontageEnded.AddDynamic(this, &AMyProjectCharacter::MontageEnded);
+
+	GetCapsuleComponent()->OnComponentBeginOverlap.AddDynamic(this, &AMyProjectCharacter::CapsuleOverlapBegin);
+	GetCapsuleComponent()->OnComponentEndOverlap.AddDynamic(this, &AMyProjectCharacter::CapsuleOverlapEnd);
 }
 
 void AMyProjectCharacter::Move(const FInputActionValue& Value)
@@ -589,16 +371,6 @@ void AMyProjectCharacter::LookTarget()
 	}
 }
 
-void AMyProjectCharacter::InputStarted()
-{
-	//InputEventMap[]
-}
-
-void AMyProjectCharacter::InputEnded()
-{
-
-}
-
 void AMyProjectCharacter::LockOn()
 {
 	IsLockOn = !IsLockOn;
@@ -615,11 +387,6 @@ void AMyProjectCharacter::LockOnBegin()
 	SetSpeed(PlayerDataStruct.PlayerLockOnMoveSpeed);
 }
 
-void AMyProjectCharacter::Attack()
-{
-	//ComboAttackStart();
-}
-
 void AMyProjectCharacter::ComboAttack()
 {
 	GetCharacterMovement()->bAllowPhysicsRotationDuringAnimRootMotion = true;
@@ -630,7 +397,6 @@ void AMyProjectCharacter::ComboAttack()
 	}
 
 	if (MontageMap.Contains(CurAnimType)) {
-		AnimInstance->Montage_Stop(0.2f, MontageMap[CurAnimType]);
 		AnimInstance->Montage_Stop(0.2f, MontageMap[CurAnimType]);
 	}
 
@@ -647,12 +413,20 @@ void AMyProjectCharacter::LockOnEnd()
 
 void AMyProjectCharacter::SprintBegin()
 {
+	SetStateType(EPlayerState::SPRINT);
 	SetSpeed(PlayerDataStruct.PlayerRunSpeed);
 }
 
 void AMyProjectCharacter::SprintEnd()
 {
+	SetStateType(EPlayerState::NONE);
 	SetSpeed(PlayerDataStruct.OriginSpeed);
+}
+
+void AMyProjectCharacter::StartInteraction(EAnimationType type)
+{
+	SetStateType(EPlayerState::CANTACT);
+	PlayMontageAnimation(type);
 }
 
 void AMyProjectCharacter::PlayMontageAnimation(EAnimationType type)
@@ -664,14 +438,28 @@ void AMyProjectCharacter::PlayMontageAnimation(EAnimationType type)
 void AMyProjectCharacter::MontageEnded(UAnimMontage* Montage, bool bInterrupted)
 {
 	if (!bInterrupted) {
+		SprintEnd();
 		ComboAttackEnd();
-		SetAnimType(EAnimationType::NONE);
 		SetStateType(EPlayerState::NONE);
 		SetActionType(EActionType::NONE);
+		SetAnimType(EAnimationType::NONE);
+		GetCharacterMovement()->bAllowPhysicsRotationDuringAnimRootMotion = false;
 	}
 }
 
 void AMyProjectCharacter::EventNotify(bool IsBegin)
 {
 	NotifyEventMap[CurAnimType][IsBegin]();
+}
+
+void AMyProjectCharacter::CapsuleOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	InteractionActor = Cast<ABaseInteractionActor>(OtherActor);
+}
+
+void AMyProjectCharacter::CapsuleOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+	if (InteractionActor == OtherActor) {
+		InteractionActor = nullptr;
+	}
 }

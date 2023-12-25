@@ -47,6 +47,7 @@ public:
 protected:
 	bool IsDie;
 	bool IsLockOn;
+	bool Imotal;
 
 	float fDeltaTime;
 
