@@ -1,6 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "../Controller/MyPlayerController.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
@@ -81,6 +78,11 @@ void AMyPlayerController::PressInteraction()
 	character->CallInputFunc(*PlayerState, EInputType::INTERACTION, true);
 }
 
+void AMyPlayerController::PressLockOn()
+{
+	character->CallInputFunc(EPlayerState::NONE, EInputType::LOCKON, true);
+}
+
 void AMyPlayerController::PressQuit()
 {
 	character->CallInputFunc(EPlayerState::NONE, EInputType::QUIT, true);
@@ -104,11 +106,6 @@ void AMyPlayerController::PressSkillAttack()
 void AMyPlayerController::UnPressSkillAttack()
 {
 	character->SetAttackType(EAttackType::BASICATTACK);
-}
-
-void AMyPlayerController::PressLockOn()
-{
-	character->CallInputFunc(EPlayerState::NONE, EInputType::LOCKON, true);
 }
 
 void AMyPlayerController::SetupInputComponent()

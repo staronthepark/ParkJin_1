@@ -10,7 +10,6 @@
 #include "Components/CanvasPanelSlot.h"
 #include "InputActionValue.h"
 #include "Containers/Queue.h"
-#include "GameFramework/CharacterMovementComponent.h"
 #include "../../InteractionActor/BaseInteractionActor.h"
 #include "Particles/ParticleSystemComponent.h"
 #include "../../Flag/Enums.h"
@@ -232,10 +231,8 @@ class AMyProjectCharacter : public ABaseCharacter
 	bool IsExecute;
 	bool CanNextAttack;
 	bool IsSprint;
-	bool IsInteraction;
 	bool IsDead;
 	bool IsGrab;
-	bool IsInputPad;
 	bool CanShieldDeploy;
 	bool CanUseSkill;
 

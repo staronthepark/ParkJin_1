@@ -15,6 +15,7 @@
 //#include "../AnimInstance/BaseAnimInstance.h"
 #include "Engine/World.h"
 #include "NiagaraComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "Components/BoxComponent.h"
 #include "Components/SphereComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -60,13 +61,10 @@ protected:
 	TArray<UActorComponent*> HitColliderArray;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	class UBoxComponent* WeaponCollision;
+	TArray<UBoxComponent*> WeaponColliderArray;
 
 	//UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	//class UBoxComponent* WeaponOverlapStaticMeshCollision;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	class UCapsuleComponent* HitCollision;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	class USphereComponent* TargetDetectionCollison;

@@ -1,5 +1,3 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
-
 #include "MyProjectCharacter.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -52,9 +50,9 @@ AMyProjectCharacter::AMyProjectCharacter()
 	ExecutionTrigger->SetupAttachment(RootComponent);
 	ExecutionTrigger->SetCollisionProfileName("Execution Trigger");
 
-	WeaponCollision = CreateDefaultSubobject<UBoxComponent>(TEXT("Right Weapon Box"));
-	WeaponCollision->SetupAttachment(WeaponMesh);
-	WeaponCollision->SetCollisionProfileName("Weapon");
+	//WeaponCollision = CreateDefaultSubobject<UBoxComponent>(TEXT("Right Weapon Box"));
+	//WeaponCollision->SetupAttachment(WeaponMesh);
+	//WeaponCollision->SetCollisionProfileName("Weapon");
 
 	SkillCollisionComp = CreateDefaultSubobject<UBoxComponent>(TEXT("Skill Collision"));
 	SkillCollisionComp->SetupAttachment(WeaponMesh);
@@ -119,6 +117,10 @@ AMyProjectCharacter::AMyProjectCharacter()
 //Input Event Map
 
 	InputEventMap[EPlayerState::NONE][EInputType::SHIELD].Add(true, [this]() {
+
+		GetCharacterMovement()->bOrientRotationToMovement = false;
+		bUseControllerRotationYaw = true;
+
 		SetStateType(EPlayerState::CANTACT);
 		SetSpeed(PlayerDataStruct.PlayerWalkSpeed);
 		PlayMontageAnimation(EAnimationType::SHIELD);
@@ -131,11 +133,15 @@ AMyProjectCharacter::AMyProjectCharacter()
 		AnimInstance->ActivateWalk(false);
 		SetSpeed(PlayerDataStruct.OriginSpeed);
 		SetStateType(EPlayerState::NONE);
+		GetCharacterMovement()->bOrientRotationToMovement = true;
+		bUseControllerRotationYaw = false;
 		}
 		});
 
 	InputEventMap[EPlayerState::NONE][EInputType::LOCKON].Add(true, [this]() {
+		if (CurAnimType != EAnimationType::SAVE) {
 		LockOn();
+		}
 		});
 
 	InputEventMap[EPlayerState::NONE][EInputType::QUIT].Add(true, [this]() {
@@ -179,9 +185,9 @@ AMyProjectCharacter::AMyProjectCharacter()
 		});
 
 	InputEventMap[EPlayerState::AFTERATTACK][EInputType::DODGE].Add(true, [this]() {
-		InputEventMap[EPlayerState::NONE][EInputType::DODGE][true]();
+ 		InputEventMap[EPlayerState::NONE][EInputType::DODGE][true]();
 		if (CurAnimType != EAnimationType::BACKSTEP) {
-			GetCharacterMovement()->bAllowPhysicsRotationDuringAnimRootMotion = true;
+		GetCharacterMovement()->bAllowPhysicsRotationDuringAnimRootMotion = true;
 		}
 		});
 
@@ -265,16 +271,14 @@ AMyProjectCharacter::AMyProjectCharacter()
 
 	for (EAnimationType AnimType : TEnumRange<EAnimationType>())
 	{
-		if (!MontageEndEventMap.Contains(AnimType))
-		{
+		if (!MontageEndEventMap.Contains(AnimType)) {
 			MontageEndEventMap.Add(AnimType, []() {});
 		}
 	}
 
 	for (EActionType MyActionType : TEnumRange<EActionType>())
 	{
-		if (!PlayerActionTickMap.Contains(MyActionType))
-		{
+		if (!PlayerActionTickMap.Contains(MyActionType)) {
 			PlayerActionTickMap.Add(MyActionType, []() {});
 		}
 	}
@@ -283,16 +287,13 @@ AMyProjectCharacter::AMyProjectCharacter()
 	{
 		for (EInputType InputType : TEnumRange<EInputType>())
 		{
-			if (!InputEventMap[StateType].Contains(InputType))
-			{
+			if (!InputEventMap[StateType].Contains(InputType)) {
 				InputEventMap[StateType].Add(InputType, TMap<bool, TFunction<void()>>());				
 			}
-			if (!InputEventMap[StateType][InputType].Contains(true))
-			{
+			if (!InputEventMap[StateType][InputType].Contains(true)) {
 				InputEventMap[StateType][InputType].Add(true, []() {});
 			}
-			if (!InputEventMap[StateType][InputType].Contains(false))
-			{
+			if (!InputEventMap[StateType][InputType].Contains(false)) {
 				InputEventMap[StateType][InputType].Add(false, []() {});
 			}
 		}
@@ -300,12 +301,10 @@ AMyProjectCharacter::AMyProjectCharacter()
 
 	for (EAnimationType MyAnimType : TEnumRange<EAnimationType>())
 	{
-		if (!NotifyEventMap[MyAnimType].Contains(true))
-		{
+		if (!NotifyEventMap[MyAnimType].Contains(true)) {
 			NotifyEventMap[MyAnimType].Add(true, []() {});
 		}
-		if (!NotifyEventMap[MyAnimType].Contains(false))
-		{
+		if (!NotifyEventMap[MyAnimType].Contains(false)) {
 			NotifyEventMap[MyAnimType].Add(false, []() {});
 		}
 	}
@@ -387,6 +386,7 @@ void AMyProjectCharacter::LockOn()
 	IsLockOn = !IsLockOn;
 
 	GetCharacterMovement()->bOrientRotationToMovement = !IsLockOn;
+	bUseControllerRotationYaw = IsLockOn;
 
 	IsLockOn ? LockOnBegin() : LockOnEnd();
 }

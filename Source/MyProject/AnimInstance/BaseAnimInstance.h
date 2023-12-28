@@ -13,5 +13,12 @@ UCLASS()
 class MYPROJECT_API UBaseAnimInstance : public UAnimInstance
 {
 	GENERATED_BODY()
-	
+
+protected:
+	UPROPERTY(Editanywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	float Speed;
+
+public:
+	FORCEINLINE	void SetSpeed(float Value) { Speed = Value; }
+	FORCEINLINE float GetSpeed() { return Speed; }
 };

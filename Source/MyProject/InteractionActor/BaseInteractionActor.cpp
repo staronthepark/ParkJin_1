@@ -1,4 +1,5 @@
 #include "BaseInteractionActor.h"
+#include "Particles/ParticleSystemComponent.h"
 
 ABaseInteractionActor::ABaseInteractionActor()
 {
@@ -6,21 +7,13 @@ ABaseInteractionActor::ABaseInteractionActor()
 
 	MyRootComponent = CreateDefaultSubobject<UPrimitiveComponent>(TEXT("My Root Component"));
 	RootComponent = MyRootComponent;
-
-//	TArray<>
-	TArray<UActorComponent*> Array = GetComponentsByClass(UFXSystemComponent::StaticClass());
-
-	for (int32 i = 0; i < Array.Num(); i++)
-	{
-		InteractionCompArray.Add(Cast<UFXSystemComponent>(Array[i]));
-	}
-
 }
 
 void ABaseInteractionActor::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
+	InteractionCompArray = GetComponentsByClass(UFXSystemComponent::StaticClass());
 }
 
 void ABaseInteractionActor::ExecuteEvent()

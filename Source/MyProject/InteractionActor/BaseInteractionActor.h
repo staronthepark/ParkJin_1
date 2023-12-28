@@ -3,7 +3,6 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "../Flag/Enums.h"
-#include "Particles/ParticleSystemComponent.h"
 #include "BaseInteractionActor.generated.h"
 
 UCLASS()
@@ -18,7 +17,7 @@ protected:
 	UPROPERTY(Editanywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = true))
 	UPrimitiveComponent* MyRootComponent;
 
-	TArray<UFXSystemComponent*> InteractionCompArray;
+	TArray<UActorComponent*> InteractionCompArray;
 
 public:	
 	ABaseInteractionActor();
