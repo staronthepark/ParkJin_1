@@ -85,25 +85,17 @@ void AEnemyBase::MontageEnded(UAnimMontage* Montage, bool bInterrupted)
 		MoveToTargetComp->Deactivate();
 
 		if (NextAttackMontage) {
-			AnimInstance->Montage_Play(NextAttackMontage);
+			StartAttack();
 			NextAttackMontage = nullptr;
 		}
 	}
 }
 
-void AEnemyBase::AttackTriggerBeginEvent(UAnimMontage* montage, EMonsterAttackType type, AActor* TargetActor)
+void AEnemyBase::AttackTriggerBeginEvent(AActor* TargetActor)
 {
 	DetectPlayer(TargetActor);
-	GetCharacterMovement()->bAllowPhysicsRotationDuringAnimRootMotion = true;
 
-	if (montage != nullptr) {
-		if (!AnimInstance->IsAnyMontagePlaying()) {			
-		AnimInstance->Montage_Play(montage);
-		return;
-		}
-	}
-
-	NextAttackMontage = montage;
+	StartAttack();
 }
 
 void AEnemyBase::AttackTriggerEndEvent()
@@ -111,11 +103,21 @@ void AEnemyBase::AttackTriggerEndEvent()
 	MoveToTargetComp->Activate();
 }
 
+void AEnemyBase::StartAttack()
+{
+	if (AnimInstance->IsAnyMontagePlaying()) {
+		return;
+	}
+	MoveToTargetComp->Activate();
+	GetCharacterMovement()->bAllowPhysicsRotationDuringAnimRootMotion = true;
+	AnimInstance->Montage_Play(CurrentAttackMontage);
+
+}
+
 void AEnemyBase::DetectPlayer(AActor* TargetActor)
 {
 	Target = TargetActor;
 	MoveToTargetComp->SetTarget(TargetActor);
-	MoveToTargetComp->Activate();
 
 	IsDetect = true;
 }
@@ -125,8 +127,8 @@ void AEnemyBase::UnDetectPlayer()
 	IsDetect = false;
 
 	if (PatrolPositionArray.Num() > 0) {
-	Controller->MoveToLocation(PatrolPositionArray[CurPatrolIndex]->GetComponentLocation());
-	return;
+		Controller->MoveToLocation(PatrolPositionArray[CurPatrolIndex]->GetComponentLocation());
+		return;
 	}
 
 	Controller->MoveToLocation(SpawnLocation);

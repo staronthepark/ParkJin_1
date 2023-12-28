@@ -14,34 +14,41 @@ void UEnemyAttackTrigger::CoolDownEnd()
 {
 	IsCoolDown = false;
 
-	if (Owner->GetAttackType() == AttackType) {	
-		StartAttack();
-		Owner->PlayAnimMontage(AttackMontage);
+	if (Owner->GetAttackType() == AttackType && IsOverlap) {	
+		CoolDownStart();
+		Owner->SetAttackMontage(AttackMontage);
+		Owner->StartAttack();
 	}
 }
 
-void UEnemyAttackTrigger::StartAttack()
+void UEnemyAttackTrigger::CoolDownStart()
 {
 	IsCoolDown = true;
 
-	FTimerHandle Timer;
 	GetWorld()->GetTimerManager().SetTimer(Timer, this, &UEnemyAttackTrigger::CoolDownEnd, CoolTime);
-
-	Owner->SetAttackType(AttackType);
 }
 
 void UEnemyAttackTrigger::TriggerOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
+	IsOverlap = true;
+
+	Owner->SetAttackType(AttackType);
+	Owner->SetAttackMontage(AttackMontage);
+
 	if (IsCoolDown) {
 		return;
 	}
 
-	Owner->AttackTriggerBeginEvent(AttackMontage, AttackType, OtherActor);
+	Owner->StartAttack();
+	Owner->AttackTriggerBeginEvent(OtherActor);
 
-	StartAttack();
+	CoolDownStart();
 }
 
 void UEnemyAttackTrigger::TriggerOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
+	IsOverlap = false;
+
+	Owner->SetAttackType(EMonsterAttackType::NONE);
 	Owner->AttackTriggerEndEvent();
 }

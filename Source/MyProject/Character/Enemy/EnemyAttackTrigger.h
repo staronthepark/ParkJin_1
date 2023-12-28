@@ -22,8 +22,11 @@ private:
 	float CoolTime;
 
 	bool IsCoolDown;
+	bool IsOverlap;
 
 	AEnemyBase* Owner;
+
+	FTimerHandle Timer;
 
 public:
 
@@ -31,7 +34,7 @@ public:
 
 	void CoolDownEnd();
 
-	void StartAttack();
+	void CoolDownStart();
 
 	UFUNCTION()
 	void TriggerOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);

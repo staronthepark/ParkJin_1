@@ -53,6 +53,7 @@ ENUM_RANGE_BY_FIRST_AND_LAST(EMonsterActionType, EMonsterActionType::NONE, EMons
 UENUM(BlueprintType)
 enum class EMonsterAttackType : uint8
 {
+	NONE,
 	ATTACK_0,
 	POWERATTACK_0,
 	RANGEATTACK_0,
@@ -90,6 +91,9 @@ protected:
 	UPROPERTY()
 	UAnimMontage* NextAttackMontage;
 
+	UPROPERTY()
+	UAnimMontage* CurrentAttackMontage;
+
 	AAIController* Controller;
 
 	AActor* Target;
@@ -115,8 +119,10 @@ protected:
 public:
 	AEnemyBase();
 
-	void AttackTriggerBeginEvent(UAnimMontage* montage, EMonsterAttackType type, AActor* TargetActor);
+	void AttackTriggerBeginEvent(AActor* TargetActor);
 	void AttackTriggerEndEvent();
+
+	void StartAttack();
 
 	void DetectPlayer(AActor * TargetActor);
 	void UnDetectPlayer();
@@ -130,6 +136,7 @@ public:
 	FORCEINLINE bool IsActing() { return Acting; }
 	FORCEINLINE EMonsterAttackType GetAttackType() { return CurAttackType; }
 	FORCEINLINE void SetAttackType(EMonsterAttackType Type) { CurAttackType = Type; }
+	FORCEINLINE void SetAttackMontage(UAnimMontage* montage) { AnimInstance->IsAnyMontagePlaying() ? NextAttackMontage = montage : CurrentAttackMontage = montage; }
 
 	UFUNCTION()
 	void MontageEnded(UAnimMontage* Montage, bool bInterrupted);
