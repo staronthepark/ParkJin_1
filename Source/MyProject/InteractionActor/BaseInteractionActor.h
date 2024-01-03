@@ -26,5 +26,5 @@ public:
 
 	virtual void ExecuteEvent();
 
-	FORCEINLINE virtual EAnimationType GetInteractionAnimType() { return PlayerAnimType; };
+	inline virtual EAnimationType GetInteractionAnimType() { return PlayerAnimType; };
 };

@@ -11,9 +11,3 @@ void UInputNotifyState::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSeque
 		Owner->SetStateType(EPlayerState::AFTERATTACK);
 	}
 }
-
-void UInputNotifyState::NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, const FAnimNotifyEventReference& EventReference)
-{
-	if (Owner != nullptr) {
-	}
-}

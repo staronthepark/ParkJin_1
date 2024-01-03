@@ -54,10 +54,6 @@ AMyProjectCharacter::AMyProjectCharacter()
 	//WeaponCollision->SetupAttachment(WeaponMesh);
 	//WeaponCollision->SetCollisionProfileName("Weapon");
 
-	SkillCollisionComp = CreateDefaultSubobject<UBoxComponent>(TEXT("Skill Collision"));
-	SkillCollisionComp->SetupAttachment(WeaponMesh);
-	SkillCollisionComp->SetCollisionProfileName("Skill Collision");
-
 	ParryingCollision = CreateDefaultSubobject<UBoxComponent>(TEXT("Parrying Collision"));
 	ParryingCollision->SetupAttachment(GetMesh());
 	ParryingCollision->SetCollisionProfileName("Parrying");
@@ -70,29 +66,29 @@ AMyProjectCharacter::AMyProjectCharacter()
 	//WeaponOverlapStaticMeshCollision->SetCollisionProfileName("Weapon");
 
 	SwordTrailComp = CreateDefaultSubobject<UNiagaraComponent>(TEXT("Sword Trail"));
-	SwordTrailComp->SetupAttachment(GetMesh(), FName("Weapon_bone"));
+	SwordTrailComp->SetupAttachment(WeaponMesh);
 	SwordTrailComp->SetCollisionProfileName("Sword Trail");
 
 	SkillTrailComp = CreateDefaultSubobject<UNiagaraComponent>(TEXT("SKill Trail"));
-	SkillTrailComp->SetupAttachment(GetMesh(), FName("Weapon_bone"));
+	SkillTrailComp->SetupAttachment(WeaponMesh);
 	SkillTrailComp->SetCollisionProfileName("Skill Trail");
 
 	SkillAuraComp = CreateDefaultSubobject<UNiagaraComponent>(TEXT("SKill Aura"));
-	SkillAuraComp->SetupAttachment(GetMesh(), FName("Weapon_bone"));
+	SkillAuraComp->SetupAttachment(WeaponMesh);
 	SkillAuraComp->SetCollisionProfileName("Skill Aura");
 
-	AttackAnimMap.Add(EAttackType::BASICATTACK, TMap<int32, EAnimationType>());
+	AttackAnimMap.Add(EAttackType::BASICATTACK, TMap<int8, EAnimationType>());
 	AttackAnimMap[EAttackType::BASICATTACK].Add(0, EAnimationType::BASICATTACK_0);
 	AttackAnimMap[EAttackType::BASICATTACK].Add(1, EAnimationType::BASICATTACK_1);
 	AttackAnimMap[EAttackType::BASICATTACK].Add(2, EAnimationType::BASICATTACK_2);
 	AttackAnimMap[EAttackType::BASICATTACK].Add(3, EAnimationType::BASICATTACK_3);
 
-	AttackAnimMap.Add(EAttackType::POWERATTACK, TMap<int32, EAnimationType>());
+	AttackAnimMap.Add(EAttackType::POWERATTACK, TMap<int8, EAnimationType>());
 	AttackAnimMap[EAttackType::POWERATTACK].Add(0, EAnimationType::POWERATTACK_0);
 	AttackAnimMap[EAttackType::POWERATTACK].Add(1, EAnimationType::POWERATTACK_1);
 	AttackAnimMap[EAttackType::POWERATTACK].Add(2, EAnimationType::POWERATTACK_2);
 
-	AttackAnimMap.Add(EAttackType::SKILLATTACK, TMap<int32, EAnimationType>());
+	AttackAnimMap.Add(EAttackType::SKILLATTACK, TMap<int8, EAnimationType>());
 	AttackAnimMap[EAttackType::SKILLATTACK].Add(0, EAnimationType::SKILLATTACK_0);
 	AttackAnimMap[EAttackType::SKILLATTACK].Add(1, EAnimationType::SKILLATTACK_1);
 
@@ -180,6 +176,7 @@ AMyProjectCharacter::AMyProjectCharacter()
 		});
 
 	InputEventMap[EPlayerState::NONE][EInputType::DODGE].Add(true, [this]() {
+		ComboAttackEnd();
 		SetStateType(EPlayerState::CANTACT);
 		MovementVector == FVector2D::ZeroVector ? PlayMontageAnimation(EAnimationType::BACKSTEP) : PlayMontageAnimation(EAnimationType::BASICDODGE);
 		});
@@ -193,9 +190,10 @@ AMyProjectCharacter::AMyProjectCharacter()
 
 	InputEventMap[EPlayerState::AFTERATTACK][EInputType::ATTACK].Add(true, [this]() {
 		if (CurAnimType == EAnimationType::BASICDODGE || CurAnimType == EAnimationType::BACKSTEP) {
-			SetStateType(EPlayerState::CANTACT);
 			GetCharacterMovement()->bAllowPhysicsRotationDuringAnimRootMotion = false;
+			SetStateType(EPlayerState::CANTACT);
 			PlayMontageAnimation(EAnimationType::DODGEATTACK);
+			AttackEvent();
 		}
 		else {
 			InputEventMap[EPlayerState::NONE][EInputType::ATTACK][true]();
@@ -206,6 +204,7 @@ AMyProjectCharacter::AMyProjectCharacter()
 		SetStateType(EPlayerState::CANTACT);
 		PlayMontageAnimation(EAnimationType::RUNATTACK);
 		PlayerCurAttackIndex += 1;
+		AttackEvent();
 		});
 
 	InputEventMap[EPlayerState::SPRINT][EInputType::SPRINT].Add(false, InputEventMap[EPlayerState::NONE][EInputType::SPRINT][false]);
@@ -215,9 +214,11 @@ AMyProjectCharacter::AMyProjectCharacter()
 
 	NotifyEventMap[EAnimationType::BASICATTACK_0].Add(true, [this]() {
 		CurStateType = EPlayerState::CANTACT;
+		AttackEvent();
 		});
 	NotifyEventMap[EAnimationType::BASICATTACK_0].Add(false, [this]() {
 		GetCharacterMovement()->bAllowPhysicsRotationDuringAnimRootMotion = false;
+		ActivateAttackCollision(ECollisionEnabled::NoCollision);
 		});
 
 	NotifyEventMap[EAnimationType::BASICATTACK_1].Add(true, NotifyEventMap[EAnimationType::BASICATTACK_0][true]);
@@ -318,6 +319,8 @@ void AMyProjectCharacter::BeginPlay()
 	CurAttackType = EAttackType::BASICATTACK;
 	CurStateType = EPlayerState::NONE;
 
+	CombatManager = NewObject<UCombatManager>();
+	
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 	SetSpeed(PlayerDataStruct.OriginSpeed);
 
@@ -326,6 +329,11 @@ void AMyProjectCharacter::BeginPlay()
 
 	GetCapsuleComponent()->OnComponentBeginOverlap.AddDynamic(this, &AMyProjectCharacter::CapsuleOverlapBegin);
 	GetCapsuleComponent()->OnComponentEndOverlap.AddDynamic(this, &AMyProjectCharacter::CapsuleOverlapEnd);
+
+	for (int8 i = 0; i < AttackCollisionArray.Num(); i++)
+	{
+		AttackCollisionArray[i]->OnComponentBeginOverlap.AddDynamic(this, &AMyProjectCharacter::OnWeaponOverlapBegin);
+	}
 }
 
 void AMyProjectCharacter::Move(const FInputActionValue& Value)
@@ -356,6 +364,31 @@ void AMyProjectCharacter::Look(const FInputActionValue& Value)
 	AddControllerPitchInput(LookAxisVector.Y);
 }
 
+float AMyProjectCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+	HitEvent();
+	Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+
+	return PlayerDataStruct.CharacterHp;
+}
+
+void AMyProjectCharacter::HitEvent()
+{
+	Super::HitEvent();
+
+	CameraShake();
+
+	if (PlayerDataStruct.CharacterHp <= 0) {
+		PlayMontageAnimation(EAnimationType::DEAD);
+		SetStateType(EPlayerState::CANTACT);
+		SetActionType(EActionType::DEAD);
+		return;
+	}
+
+	SetStateType(EPlayerState::CANTACT);
+	PlayMontageAnimation(EAnimationType::HIT);
+}
+
 void AMyProjectCharacter::CallInputFunc(EPlayerState state, EInputType type, bool IsPress)
 {
 	InputEventMap[state][type][IsPress]();
@@ -365,8 +398,6 @@ void AMyProjectCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	LookTarget();
-
 	AnimInstance->SetSpeed(GetVelocity().Length());
 
 	AnimInstance->SetAxisX(FMath::Lerp(AnimInstance->GetAxisX(), MovementVector.X, fDeltaTime * 10.0f));
@@ -375,10 +406,6 @@ void AMyProjectCharacter::Tick(float DeltaTime)
 
 void AMyProjectCharacter::LookTarget()
 {
-	if (IsLockOn)
-	{
-
-	}
 }
 
 void AMyProjectCharacter::LockOn()
@@ -418,8 +445,9 @@ void AMyProjectCharacter::LockOnEnd()
 {
 	AnimInstance->SetLockOn(false);
 
-	if(!IsSprint)
+	if (!IsSprint) {
 	SetSpeed(PlayerDataStruct.OriginSpeed);
+	}
 }
 
 void AMyProjectCharacter::SprintBegin()
@@ -474,4 +502,18 @@ void AMyProjectCharacter::CapsuleOverlapEnd(UPrimitiveComponent* OverlappedCompo
 	if (InteractionActor == OtherActor) {
 		InteractionActor = nullptr;
 	}
+}
+
+void AMyProjectCharacter::OnWeaponOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	ABaseCharacter* DamagedCharacter = Cast<ABaseCharacter>(OtherActor);
+
+	CameraShake();
+
+	if (OtherActor->TakeDamage(10.0f, CharacterDamageEvent, nullptr, this) <= 0) {
+		CombatManager->RemoveDamagedCharacter(DamagedCharacter);
+		return;
+	}
+
+	CombatManager->AddDamagedCharacter(DamagedCharacter);
 }

@@ -46,6 +46,25 @@ public:
 
 	
 protected:
+
+	UPROPERTY(EditAnywhere)
+	class USphereComponent* TargetDetectionCollison;
+
+	UPROPERTY(EditAnywhere)
+	class UStaticMeshComponent* WeaponMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UNiagaraComponent* SwordTrailComp;
+
+	UPROPERTY(EditAnywhere)
+	TArray<UCapsuleComponent*> HitCollisionArray;
+
+	UPROPERTY(EditAnywhere)
+	TArray<UBoxComponent*> AttackCollisionArray;
+
+	UPROPERTY(EditAnywhere)
+	float HitStopTime;
+
 	bool IsDie;
 	bool IsLockOn;
 	bool Imotal;
@@ -53,38 +72,27 @@ protected:
 	float fDeltaTime;
 
 	FTimerHandle HitStopTimer;
+	FDamageEvent CharacterDamageEvent;
 
 	FVector SpawnLocation;
 	FRotator SpawnRotation;
 
-	UPROPERTY(Editanywhere)
-	TArray<UActorComponent*> HitColliderArray;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TArray<UBoxComponent*> WeaponColliderArray;
-
-	//UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	//class UBoxComponent* WeaponOverlapStaticMeshCollision;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	class USphereComponent* TargetDetectionCollison;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	class UStaticMeshComponent* WeaponMesh;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UNiagaraComponent* SwordTrailComp;
-
 public:
 
+	void HitStop() {
+		GetMesh()->bPauseAnims = true;
+		GetWorldTimerManager().SetTimer(HitStopTimer, [this]() {
+			GetMesh()->bPauseAnims = false;
+			}, HitStopTime, false);
+	}
+
 	virtual void Init();
-	virtual void HitStop() {}
 	virtual void RespawnCharacter();
 	virtual void SetActive(bool value);
-	virtual void ActiveHitCollider(bool value);
 
-	virtual void ActivateRightWeapon() {  }
-	virtual void DeactivateRightWeapon() {  }
+	virtual void ActivateAttackCollision(ECollisionEnabled::Type NewType);
+	virtual void ActivateHitCollision(ECollisionEnabled::Type NewType);
+
 	virtual void ActivateSMOverlap() {  }
 	virtual void DeactivateSMOverlap() {  }
 	virtual void ResumeMontage() { }
@@ -97,9 +105,4 @@ public:
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser);
 
 	virtual void HitEvent();
-
-	void DeactivateHitCollision() {}
-
-	UFUNCTION()
-	void HitCollisionBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 };

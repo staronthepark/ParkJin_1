@@ -16,26 +16,24 @@ AEnemyBase::AEnemyBase()
 	}
 
 	NotifyEventMap[EMonsterAnimationType::ATTACK_0].Add(true, [this]() {
-
+		ActivateAttackCollision(ECollisionEnabled::QueryOnly);
 		});
 	NotifyEventMap[EMonsterAnimationType::ATTACK_0].Add(false, [this]() {
-
+		ActivateAttackCollision(ECollisionEnabled::NoCollision);
 		});
-	NotifyEventMap[EMonsterAnimationType::POWERATTACK_0].Add(true, [this]() {
 
-		});
-	NotifyEventMap[EMonsterAnimationType::POWERATTACK_0].Add(false, [this]() {
+	NotifyEventMap[EMonsterAnimationType::POWERATTACK_0].Add(true, NotifyEventMap[EMonsterAnimationType::ATTACK_0][true]);
+	NotifyEventMap[EMonsterAnimationType::POWERATTACK_0].Add(false, NotifyEventMap[EMonsterAnimationType::ATTACK_0][false]);
 
-		});
 
 	// Add Empty Func
 	for (EMonsterAnimationType AnimType : TEnumRange<EMonsterAnimationType>())
 	{
-		if (NotifyEventMap[AnimType].Contains(false)) {
+		if (!NotifyEventMap[AnimType].Contains(false)) {
 			NotifyEventMap[AnimType].Add(false, [this]() {});
 		}
 
-		if (NotifyEventMap[AnimType].Contains(true)) {
+		if (!NotifyEventMap[AnimType].Contains(true)) {
 			NotifyEventMap[AnimType].Add(true, [this]() {});
 		}
 	}
@@ -56,12 +54,12 @@ void AEnemyBase::BeginPlay()
 		PatrolPositionArray.Add(Cast<UPrimitiveComponent>(ActorCompArray[i]));
 	}
 
-	AnimInstance->OnMontageEnded.AddDynamic(this, &AEnemyBase::MontageEnded);
-}
+	for (int8 i = 0; i < AttackCollisionArray.Num(); i++)
+	{
+		AttackCollisionArray[i]->OnComponentBeginOverlap.AddDynamic(this, &AEnemyBase::OnWeaponOverlapBegin);
+	}
 
-void AEnemyBase::HitStop()
-{
-	Super::HitStop();
+	AnimInstance->OnMontageEnded.AddDynamic(this, &AEnemyBase::MontageEnded);
 }
 
 void AEnemyBase::Tick(float DeltaTime)
@@ -71,24 +69,27 @@ void AEnemyBase::Tick(float DeltaTime)
 	AnimInstance->SetSpeed(FMath::Lerp(AnimInstance->GetSpeed(), GetVelocity().Length(), DeltaTime * 10.0f));
 }
 
-void AEnemyBase::MontageEnded(UAnimMontage* Montage, bool bInterrupted)
+void AEnemyBase::EventNotify(bool IsBegin)
 {
-	if (!bInterrupted) {
-		GetCharacterMovement()->bAllowPhysicsRotationDuringAnimRootMotion = false;
+	NotifyEventMap[CurAnimType][IsBegin]();
+}
 
-		if (FVector::Dist(Target->GetActorLocation(), GetActorLocation()) > 150.0f) {
-			MoveToTargetComp->Activate();
-			return;
-		}
+void AEnemyBase::HitEvent()
+{
+	Super::HitEvent();
 
-		Controller->StopMovement();
-		MoveToTargetComp->Deactivate();
+	ActivateHitCollision(ECollisionEnabled::NoCollision);
+	EnemyDataStruct.CharacterHp <= 0 ? PlayMontageAnimation(EMonsterAnimationType::DEAD) : PlayMontageAnimation(EMonsterAnimationType::HIT);
+}
 
-		if (NextAttackMontage) {
-			StartAttack();
-			NextAttackMontage = nullptr;
-		}
-	}
+float AEnemyBase::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+	EnemyDataStruct.CharacterHp -= DamageAmount;
+	Target = DamageCauser;
+
+	Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+
+	return EnemyDataStruct.CharacterHp;
 }
 
 void AEnemyBase::AttackTriggerBeginEvent(AActor* TargetActor)
@@ -111,7 +112,6 @@ void AEnemyBase::StartAttack()
 	MoveToTargetComp->Activate();
 	GetCharacterMovement()->bAllowPhysicsRotationDuringAnimRootMotion = true;
 	AnimInstance->Montage_Play(CurrentAttackMontage);
-
 }
 
 void AEnemyBase::DetectPlayer(AActor* TargetActor)
@@ -136,6 +136,35 @@ void AEnemyBase::UnDetectPlayer()
 
 void AEnemyBase::PlayMontageAnimation(EMonsterAnimationType type)
 {
-	CurAnimType = type;
+	SetAnimType(type);
 	AnimInstance->Montage_Play(MontageMap[CurAnimType]);
+}
+
+void AEnemyBase::MontageEnded(UAnimMontage* Montage, bool bInterrupted)
+{
+	if (!bInterrupted) {
+		GetCharacterMovement()->bAllowPhysicsRotationDuringAnimRootMotion = false;
+
+		if (FVector::Dist(Target->GetActorLocation(), GetActorLocation()) > 150.0f) {
+			MoveToTargetComp->Activate();
+			return;
+		}
+
+		Controller->StopMovement();
+		MoveToTargetComp->Deactivate();
+
+		if (NextAttackMontage) {
+			StartAttack();
+			NextAttackMontage = nullptr;
+			return;
+		}
+
+		SetAnimType(EMonsterAnimationType::NONE);
+	}
+}
+
+void AEnemyBase::OnWeaponOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	OtherActor->TakeDamage(10.0f, CharacterDamageEvent, nullptr, this);
+	ActivateAttackCollision(ECollisionEnabled::NoCollision);
 }

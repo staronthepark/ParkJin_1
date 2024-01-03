@@ -14,9 +14,10 @@ void UEnemyAttackTrigger::CoolDownEnd()
 {
 	IsCoolDown = false;
 
-	if (Owner->GetAttackType() == AttackType && IsOverlap) {	
+	if (IsOverlap) {
 		CoolDownStart();
 		Owner->SetAttackMontage(AttackMontage);
+		Owner->SetAnimType(AnimationType);
 		Owner->StartAttack();
 	}
 }
@@ -32,7 +33,7 @@ void UEnemyAttackTrigger::TriggerOverlapBegin(UPrimitiveComponent* OverlappedCom
 {
 	IsOverlap = true;
 
-	Owner->SetAttackType(AttackType);
+	Owner->SetAnimType(AnimationType);
 	Owner->SetAttackMontage(AttackMontage);
 
 	if (IsCoolDown) {
@@ -49,6 +50,5 @@ void UEnemyAttackTrigger::TriggerOverlapEnd(UPrimitiveComponent* OverlappedCompo
 {
 	IsOverlap = false;
 
-	Owner->SetAttackType(EMonsterAttackType::NONE);
 	Owner->AttackTriggerEndEvent();
 }

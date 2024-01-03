@@ -24,13 +24,13 @@ class MYPROJECT_API UPlayerAnimInstance : public UBaseAnimInstance
 
 public:
 
-	FORCEINLINE	void ActivateWalk(bool Value) { IsWalk = Value; }
+	inline	void ActivateWalk(bool Value) { IsWalk = Value; }
 
-	FORCEINLINE	void SetAxisX(float Value) { AxisX = Value; }
-	FORCEINLINE	void SetAxisY(float Value) { AxisY = Value; }
+	inline	void SetAxisX(float Value) { AxisX = Value; }
+	inline	void SetAxisY(float Value) { AxisY = Value; }
 
-	FORCEINLINE	float GetAxisX() { return AxisX; }
-	FORCEINLINE	float GetAxisY() { return AxisY; }
+	inline	float GetAxisX() { return AxisX; }
+	inline	float GetAxisY() { return AxisY; }
 
-	FORCEINLINE	void SetLockOn(bool Value) { IsLockOn = Value; }
+	inline	void SetLockOn(bool Value) { IsLockOn = Value; }
 };

@@ -18,7 +18,7 @@ void ABaseInteractionActor::BeginPlay()
 
 void ABaseInteractionActor::ExecuteEvent()
 {
-	for (int32 i = 0; i < InteractionCompArray.Num(); i++)
+	for (int8 i = 0; i < InteractionCompArray.Num(); i++)
 	{
 		InteractionCompArray[i]->SetActive(true);
 	}

@@ -24,7 +24,7 @@ class MYPROJECT_API UDoorAnimInstance : public UBaseAnimInstance
 		EDoorAnimationType DoorAnimType;
 	
 public:
-	FORCEINLINE void ChangeDoorAnimation(EDoorAnimationType type) {
+	inline void ChangeDoorAnimation(EDoorAnimationType type) {
 		DoorAnimType = type;
 	}
 };

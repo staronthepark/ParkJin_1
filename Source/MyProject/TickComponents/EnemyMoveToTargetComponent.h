@@ -25,6 +25,6 @@ public:
 	virtual void BeginPlay() override;
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;		
 
-	FORCEINLINE void SetTarget(AActor* Actor) { Target = Actor; }
-	FORCEINLINE void SetContoller(AAIController* Controller) { OwnerController = Controller; }
+	inline void SetTarget(AActor* Actor) { Target = Actor; }
+	inline void SetContoller(AAIController* Controller) { OwnerController = Controller; }
 };

@@ -19,6 +19,6 @@ protected:
 	float Speed;
 
 public:
-	FORCEINLINE	void SetSpeed(float Value) { Speed = Value; }
-	FORCEINLINE float GetSpeed() { return Speed; }
+	inline	void SetSpeed(float Value) { Speed = Value; }
+	inline float GetSpeed() { return Speed; }
 };

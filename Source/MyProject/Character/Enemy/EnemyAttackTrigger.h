@@ -16,7 +16,7 @@ private:
 	UAnimMontage* AttackMontage;
 
 	UPROPERTY(Editanywhere, meta = (AllowPrivateAccess = true))
-	EMonsterAttackType AttackType;
+	EMonsterAnimationType AnimationType;
 
 	UPROPERTY(Editanywhere, meta = (AllowPrivateAccess = true))
 	float CoolTime;

@@ -13,6 +13,7 @@
 #include "../../InteractionActor/BaseInteractionActor.h"
 #include "Particles/ParticleSystemComponent.h"
 #include "../../Flag/Enums.h"
+#include "../../Manager/CombatManager.h"
 //#include "ActorSequenceComponent.h"
 //#include "ActorSequencePlayer.h"
 #include "MyProjectCharacter.generated.h"
@@ -54,7 +55,7 @@ struct FPlayerCharacterDataStruct : public FCharacterStat
 		TMap<EAnimationType, FPlayerDamageInfo>DamageList;
 
 	UPROPERTY(EditAnywhere)
-		int32 MaxHealCount;
+		int8 MaxHealCount;
 
 	UPROPERTY(EditAnywhere)
 		float SoulCount;
@@ -117,25 +118,25 @@ struct FPlayerCharacterDataStruct : public FCharacterStat
 		float AttackDefDistance;
 
 	UPROPERTY(EditAnywhere)
-		int32 StrengthIndex;
+		int8 StrengthIndex;
 
 	UPROPERTY(EditAnywhere)
-		int32 StaminaIndex;
+		int8 StaminaIndex;
 
 	UPROPERTY(EditAnywhere)
-		int32 HPIndex;
+		int8 HPIndex;
 
 	UPROPERTY(EditAnywhere)
-		int32 ShieldIndex;
+		int8 ShieldIndex;
 
 	UPROPERTY(EditAnywhere)
-		int32 SoulBonusCount;
+		int8 SoulBonusCount;
 
 	UPROPERTY(EditAnywhere)
-		int32 SkillSoulCost;
+		int8 SkillSoulCost;
 
 	UPROPERTY(EditAnywhere)
-		int32 ShieldBashSoulCost;
+		int8 ShieldBashSoulCost;
 };
 
 class UInputAction;
@@ -158,9 +159,6 @@ class AMyProjectCharacter : public ABaseCharacter
 	UNiagaraComponent* SkillAuraComp;
 
 	UPROPERTY(EditAnywhere, Meta = (AllowPrivateAccess = true))
-	UBoxComponent* SkillCollisionComp;
-
-	UPROPERTY(EditAnywhere, Meta = (AllowPrivateAccess = true))
 	UBoxComponent* ExecutionTrigger;
 
 	UPROPERTY(EditAnywhere, Meta = (AllowPrivateAccess = true))
@@ -171,9 +169,6 @@ class AMyProjectCharacter : public ABaseCharacter
 
 	UPROPERTY(EditAnywhere, Meta = (AllowPrivateAccess = true))
 	USceneComponent* HeadBoneLocation;
-
-	UPROPERTY(EditAnywhere, Meta = (AllowPrivateAccess = true))
-	TSubclassOf< UCameraShakeBase> PlayerDoorCameraShake;
 
 	UPROPERTY(EditAnywhere, Meta = (AllowPrivateAccess = true))
 	FPlayerCharacterDataStruct PlayerDataStruct;
@@ -190,8 +185,12 @@ class AMyProjectCharacter : public ABaseCharacter
 	UPROPERTY(EditAnywhere, Meta = (AllowPrivateAccess = true))
 	UStaticMeshComponent* ShieldMeshComp;
 
+	UPROPERTY(EditAnywhere, Meta = (AllowPrivateAccess = true))
+	TSubclassOf < UCameraShakeBase>PlayerCameraShake;
+
 	UPROPERTY()
 	UBoxComponent* ShieldOverlapComp;
+
 
 	//	UPROPERTY()
 	//	TSubclassOf<UPlayerHUD> PlayerUIClass;
@@ -205,16 +204,16 @@ class AMyProjectCharacter : public ABaseCharacter
 	UPROPERTY()
 	UPlayerAnimInstance* AnimInstance;
 
+	UPROPERTY()
+	UCombatManager* CombatManager;
+
 	FCameraSetting OriginCameraSetting;
 	FCameraSetting ShieldCameraSetting;
 	FCameraSetting CurrentCameraSetting;
 
-	int32 CurRotateIndex;
-	int32 CurHealCount;
-	int32 PlayerCurAttackIndex;
-	int32 MaxAttackIndex;
-	int32 AxisX;
-	int32 AxisY;
+	int8 CurHealCount;
+	int8 PlayerCurAttackIndex;
+	int8 MaxAttackIndex;
 
 	float RotSpeed;
 	float DiagonalSpeed;
@@ -273,26 +272,14 @@ class AMyProjectCharacter : public ABaseCharacter
 	TArray<UPrimitiveComponent*>TargetCompInScreenArray;
 	TArray<UPrimitiveComponent*>TargetCompFrontPlayerArray;
 
-	//TMap<EAnimationType, EPlayerState>PlayerEnumToAnimTypeMap;
-	TMap<EAnimationType, TMap<bool, TFunction<void()>>> NotifyEventMap;
+	//	TMap<EPlayerStatType, int32> StatCurrentIdxMap;
+	TMap<EAnimationType, FRotator> HitEffectRotatorList;
+	TMap<EAttackType, TMap<int8, EAnimationType>> AttackAnimMap;
 	TMap<EActionType, TFunction<void()>> PlayerActionTickMap;
 	TMap<EAnimationType, TFunction<void()>>MontageEndEventMap;
-
-	TMap<EActionType, TMap< int32, EAnimationType>>IntToEnumMap;
-
-	TMap<EAnimationType, FRotator> HitEffectRotatorList;
-
-	TMap<bool, TFunction<EAnimationType()>> DodgeAnimationMap;
-	TMap<bool, TFunction<void()>> MovementAnimMap;
-
 	TMap<EAnimationType, TMap<bool, TFunction<void()>>> PlayerEventFuncMap;
-	TMap<bool, TFunction<void()>> PlayerAttackFuncMap;
+	TMap<EAnimationType, TMap<bool, TFunction<void()>>> NotifyEventMap;
 	TMap<EPlayerState, TMap<EInputType, TMap<bool, TFunction<void()>>>>InputEventMap;
-	//	TMap<EPlayerStatType, int32> StatCurrentIdxMap;
-	TMap<EActionType, int32>PlayerMaxAttackIndex;
-	TMap<bool, TMap<bool, float>>SpeedMap;
-	TMap<bool, TFunction<void()>> LockOnCameraSettingMap;
-	TMap<EAttackType, TMap<int32, EAnimationType>> AttackAnimMap;
 
 public:
 	AMyProjectCharacter();
@@ -301,14 +288,14 @@ public:
 
 	virtual void EventNotify(bool IsBegin);
 
+	virtual void HitEvent() override;
+
 	//virtual bool IsAlive() {}override;
 	//
 	//
 	//virtual void CheckMontageEndNotify() {}override;
 	//
 	//virtual void ResumeMontage() {}override;
-	//
-	//virtual void HitStop() {}override;
 	//
 	//
 	virtual void Tick(float DeltaTime);
@@ -327,7 +314,7 @@ public:
 	//
 	//virtual void DeactivateSMOverlap() {}override;
 	//
-	//virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) {} override;
+	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 
 
 	void CallInputFunc(EPlayerState state, EInputType type, bool IsPress);
@@ -418,7 +405,7 @@ public:
 
 	void ShieldAttack() {}
 
-	void SetSoul(int32 value) {}
+	void SetSoul(int8 value) {}
 
 	void LoadFile() {}
 
@@ -432,37 +419,46 @@ public:
 
 	bool UseStamina(float value) { return 0; }
 
-	bool CanActivate(int32 SoulCount) { return 0; }
+	bool CanActivate(int8 SoulCount) { return 0; }
+
+	void StopPlayerMontage() {
+		AnimInstance->Montage_Stop(0.2f, MontageMap[CurAnimType]);
+		MontageEnded(nullptr, false);
+	}
 	
-	FORCEINLINE FVector2D GetMovementVector() { return MovementVector; }
+	void AttackEvent() {
+		CombatManager->ActivateHitCollision();
+		ActivateAttackCollision(ECollisionEnabled::QueryOnly);
+	}
 
-	FORCEINLINE EPlayerState * GetCurStateType() { return &CurStateType; }
+	void CameraShake() {
+		GetWorld()->GetFirstPlayerController()->ClientPlayCameraShake(PlayerCameraShake);
+	}
 
-	FORCEINLINE bool IsActiveCanclebyMove() { return CanclebyMove; }
+	inline FVector2D GetMovementVector() { return MovementVector; }
 
-	FORCEINLINE void SetStateType(EPlayerState type) { CurStateType = type; }
+	inline EPlayerState * GetCurStateType() { return &CurStateType; }
 
-	FORCEINLINE UPlayerAnimInstance* GetAnimInstance() { return AnimInstance; }
+	inline bool IsActiveCanclebyMove() { return CanclebyMove; }
 
-	FORCEINLINE void ActiveCanclebyMove(bool value) { CanclebyMove = value; }
+	inline void SetStateType(EPlayerState type) { CurStateType = type; }
 
-	FORCEINLINE void SetAnimType(EAnimationType type) { CurAnimType = type; }
+	inline UPlayerAnimInstance* GetAnimInstance() { return AnimInstance; }
 
-	FORCEINLINE void SetActionType(EActionType type) { CurActionType = type; }
+	inline void ActiveCanclebyMove(bool value) { CanclebyMove = value; }
 
-	FORCEINLINE void SetSpeed(float speed) { GetCharacterMovement()->MaxWalkSpeed = speed; }
+	inline void SetAnimType(EAnimationType type) { CurAnimType = type; }
 
-	FORCEINLINE void ComboAttackEnd() { 
+	inline void SetActionType(EActionType type) { CurActionType = type; }
+
+	inline void SetSpeed(float speed) { GetCharacterMovement()->MaxWalkSpeed = speed; }
+
+	inline void ComboAttackEnd() { 
 		PlayerCurAttackIndex = 0; 
 		CanclebyMove = false;
 	}
 
-	FORCEINLINE void StopPlayerMontage() {
-		AnimInstance->Montage_Stop(0.2f, MontageMap[CurAnimType]);
-		MontageEnded(nullptr, false);
-	}
-
-	FORCEINLINE void SetAttackType(EAttackType type) {
+	inline void SetAttackType(EAttackType type) {
 		CurAttackType = type;
 		if (CurAttackType == EAttackType::POWERATTACK) {
 			if (PlayerCurAttackIndex == 3) {
@@ -485,7 +481,7 @@ public:
 		void OnEnemyDetectionEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex) {}
 
 	UFUNCTION()
-		void OnWeaponOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult) {}
+		void OnWeaponOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
 	UFUNCTION()
 		void OnSMOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex) {}

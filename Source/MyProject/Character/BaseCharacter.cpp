@@ -19,12 +19,24 @@ void ABaseCharacter::BeginPlay()
 
 	Init();
 
-	HitColliderArray = GetComponentsByTag(UCapsuleComponent::StaticClass(), "Hit");
+	AttackCollisionArray.Empty();
+	HitCollisionArray.Empty();
 
-	for (int32 i = 0; i < HitColliderArray.Num(); i++)
+	TArray<UActorComponent*> ActorCompArray = GetComponentsByTag(UCapsuleComponent::StaticClass(), "Hit");
+
+	for (int8 i = 0; i < ActorCompArray.Num(); i++)
 	{
-		Cast<UCapsuleComponent>(HitColliderArray[i])->OnComponentBeginOverlap.AddDynamic(this, &ABaseCharacter::HitCollisionBeginOverlap);
+		HitCollisionArray.Add(Cast<UCapsuleComponent>(ActorCompArray[i]));
 	}
+
+	ActorCompArray = GetComponentsByTag(UBoxComponent::StaticClass(), "Weapon");
+
+	for (int8 i = 0; i < ActorCompArray.Num(); i++)
+	{
+		AttackCollisionArray.Add(Cast<UBoxComponent>(ActorCompArray[i]));
+	}
+
+	ActivateAttackCollision(ECollisionEnabled::NoCollision);
 }
 
 void ABaseCharacter::RespawnCharacter()
@@ -46,11 +58,19 @@ void ABaseCharacter::SetActive(bool value)
 	SetActorTickEnabled(value);
 }
 
-void ABaseCharacter::ActiveHitCollider(bool value)
+void ABaseCharacter::ActivateAttackCollision(ECollisionEnabled::Type NewType)
 {
-	for (int32 i = 0; i < HitColliderArray.Num(); i++)
+	for (int8 i = 0; i < AttackCollisionArray.Num(); i++)
 	{
-		HitColliderArray[i]->Activate(value);
+		AttackCollisionArray[i]->SetCollisionEnabled(NewType);
+	}
+}
+
+void ABaseCharacter::ActivateHitCollision(ECollisionEnabled::Type NewType)
+{
+	for (int8 i = 0; i < HitCollisionArray.Num(); i++)
+	{
+		HitCollisionArray[i]->SetCollisionEnabled(NewType);
 	}
 }
 
@@ -63,19 +83,12 @@ void ABaseCharacter::Tick(float DeltaTime)
 
 float ABaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
-	HitStop();
-	ActiveHitCollider(false);
+	HitEvent();
 
 	return DamageAmount;
 }
 
 void ABaseCharacter::HitEvent()
 {
-	ActiveHitCollider(false);
-
-}
-
-void ABaseCharacter::HitCollisionBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
-{
-	HitEvent();
+	HitStop();
 }

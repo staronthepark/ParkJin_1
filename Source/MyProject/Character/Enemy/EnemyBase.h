@@ -15,6 +15,8 @@ enum class EMonsterAnimationType : uint8
 	NONE,
 	STANDBY,
 	IDLE,
+	HIT,
+	DEAD,
 	ATTACK_0,
 	POWERATTACK_0,
 	RANGEATTACK_0,
@@ -70,6 +72,15 @@ enum class EMonsterType : uint8
 	BOSS,
 };
 
+USTRUCT(BlueprintType)
+struct FEnemyDataStruct : public FCharacterStat
+{
+	GENERATED_BODY()
+
+
+
+};
+
 UCLASS()
 class MYPROJECT_API AEnemyBase : public ABaseCharacter
 {
@@ -88,11 +99,15 @@ protected:
 	UPROPERTY(Editanywhere, meta = (AllowPrivateAccess = true))
 	UEnemyMoveToTargetComponent* MoveToTargetComp;
 
+	UPROPERTY(Editanywhere, meta = (AllowPrivateAccess = true))
+	FEnemyDataStruct EnemyDataStruct;
+
 	UPROPERTY()
 	UAnimMontage* NextAttackMontage;
 
 	UPROPERTY()
 	UAnimMontage* CurrentAttackMontage;
+
 
 	AAIController* Controller;
 
@@ -100,7 +115,6 @@ protected:
 
 	EMonsterAnimationType CurAnimType;
 	EMonsterAnimationType StartAnimType;
-	EMonsterAttackType CurAttackType;
 
 	bool Acting;
 	bool IsDetect;
@@ -127,17 +141,23 @@ public:
 	void DetectPlayer(AActor * TargetActor);
 	void UnDetectPlayer();
 
+	void SetAttackMontage(UAnimMontage* montage) { AnimInstance->IsAnyMontagePlaying() ? NextAttackMontage = montage : CurrentAttackMontage = montage; }
+
 	virtual void PlayMontageAnimation(EMonsterAnimationType type);
 
+	virtual void HitEvent() override;
 	virtual void BeginPlay() override;
-	virtual void HitStop() override;
 	virtual void Tick(float DeltaTime) override;
+	virtual void EventNotify(bool IsBegin)override;
+	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 
-	FORCEINLINE bool IsActing() { return Acting; }
-	FORCEINLINE EMonsterAttackType GetAttackType() { return CurAttackType; }
-	FORCEINLINE void SetAttackType(EMonsterAttackType Type) { CurAttackType = Type; }
-	FORCEINLINE void SetAttackMontage(UAnimMontage* montage) { AnimInstance->IsAnyMontagePlaying() ? NextAttackMontage = montage : CurrentAttackMontage = montage; }
+	inline bool IsActing() { return Acting; }
+	inline EMonsterAnimationType GetAnimType() { return CurAnimType; }
+	inline void SetAnimType(EMonsterAnimationType Type) { CurAnimType = Type; }
 
 	UFUNCTION()
 	void MontageEnded(UAnimMontage* Montage, bool bInterrupted);
+
+	UFUNCTION()
+	void OnWeaponOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 };
