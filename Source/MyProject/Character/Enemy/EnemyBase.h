@@ -6,6 +6,7 @@
 #include "../../TickComponents/EnemyMoveToTargetComponent.h"
 #include "../../AnimInstance/EnemyAnimInstance.h"
 #include "Perception/AIPerceptionStimuliSourceComponent.h"
+#include "Components/WidgetComponent.h"
 #include "Perception/AISense_Sight.h"
 #include "EnemyBase.generated.h"
 
@@ -102,6 +103,9 @@ protected:
 	UPROPERTY(Editanywhere, meta = (AllowPrivateAccess = true))
 	FEnemyDataStruct EnemyDataStruct;
 
+	UPROPERTY(Editanywhere)
+	UWidgetComponent* LockOnWidget;
+
 	UPROPERTY()
 	UAnimMontage* NextAttackMontage;
 
@@ -154,6 +158,7 @@ public:
 	inline bool IsActing() { return Acting; }
 	inline EMonsterAnimationType GetAnimType() { return CurAnimType; }
 	inline void SetAnimType(EMonsterAnimationType Type) { CurAnimType = Type; }
+	inline UWidgetComponent* GetLockOnWidgetComp() { return LockOnWidget; }
 
 	UFUNCTION()
 	void MontageEnded(UAnimMontage* Montage, bool bInterrupted);

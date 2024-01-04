@@ -1,21 +1,22 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "../BaseCharacter.h"
-#include "../../AnimInstance/PlayerAnimInstance.h"
-//#include "../UI/PlayerHUD.h"
-//#include "../UI/UserSettingUI.h"
+#include "Particles/ParticleSystemComponent.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Components/CanvasPanelSlot.h"
 #include "InputActionValue.h"
 #include "Containers/Queue.h"
-#include "../../InteractionActor/BaseInteractionActor.h"
-#include "Particles/ParticleSystemComponent.h"
+#include "Components/WidgetComponent.h"
+#include "../BaseCharacter.h"
+#include "../Enemy/EnemyBase.h"
 #include "../../Flag/Enums.h"
+#include "../../AnimInstance/PlayerAnimInstance.h"
+#include "../../InteractionActor/BaseInteractionActor.h"
 #include "../../Manager/CombatManager.h"
-//#include "ActorSequenceComponent.h"
-//#include "ActorSequencePlayer.h"
+#include "../../TickComponents/LookTargetComponent.h"
+//#include "../UI/PlayerHUD.h"
+//#include "../UI/UserSettingUI.h"
 #include "MyProjectCharacter.generated.h"
 
 
@@ -188,6 +189,9 @@ class AMyProjectCharacter : public ABaseCharacter
 	UPROPERTY(EditAnywhere, Meta = (AllowPrivateAccess = true))
 	TSubclassOf < UCameraShakeBase>PlayerCameraShake;
 
+	UPROPERTY(EditAnywhere, Meta = (AllowPrivateAccess = true))
+	ULookTargetComponent* LookTargetComp;
+
 	UPROPERTY()
 	UBoxComponent* ShieldOverlapComp;
 
@@ -206,6 +210,10 @@ class AMyProjectCharacter : public ABaseCharacter
 
 	UPROPERTY()
 	UCombatManager* CombatManager;
+
+	UPROPERTY()
+	UPrimitiveComponent* TargetComp;
+
 
 	FCameraSetting OriginCameraSetting;
 	FCameraSetting ShieldCameraSetting;
@@ -258,6 +266,7 @@ class AMyProjectCharacter : public ABaseCharacter
 
 	ABaseCharacter* ExecutionCharacter;
 	ABaseInteractionActor* InteractionActor;
+	AEnemyBase* LockOnEnemy;
 
 	EPlayerState CurStateType;
 	EActionType CurActionType;
@@ -270,7 +279,6 @@ class AMyProjectCharacter : public ABaseCharacter
 
 	TArray<UPrimitiveComponent*>TargetCompArray;
 	TArray<UPrimitiveComponent*>TargetCompInScreenArray;
-	TArray<UPrimitiveComponent*>TargetCompFrontPlayerArray;
 
 	//	TMap<EPlayerStatType, int32> StatCurrentIdxMap;
 	TMap<EAnimationType, FRotator> HitEffectRotatorList;
@@ -324,9 +332,9 @@ public:
 
 	void Look(const FInputActionValue& Value);
 
-	void GetCompsInScreen(TArray<UPrimitiveComponent*>Array) {}
+	void GetCompsInScreen();
 
-	void GetFirstTarget() {}
+	UPrimitiveComponent* GetFirstTarget();
 
 	void ChangeTarget(ECameraDirection Direction) {}
 
@@ -475,10 +483,10 @@ public:
 	}
 
 	UFUNCTION()
-		void OnEnemyDetectionBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult) {}
+		void OnEnemyDetectionBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
 	UFUNCTION()
-		void OnEnemyDetectionEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex) {}
+		void OnEnemyDetectionEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 
 	UFUNCTION()
 		void OnWeaponOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);

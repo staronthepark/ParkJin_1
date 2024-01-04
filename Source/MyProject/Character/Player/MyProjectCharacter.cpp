@@ -77,6 +77,8 @@ AMyProjectCharacter::AMyProjectCharacter()
 	SkillAuraComp->SetupAttachment(WeaponMesh);
 	SkillAuraComp->SetCollisionProfileName("Skill Aura");
 
+	LookTargetComp = CreateDefaultSubobject<ULookTargetComponent>("Look Target Comp");
+
 	AttackAnimMap.Add(EAttackType::BASICATTACK, TMap<int8, EAnimationType>());
 	AttackAnimMap[EAttackType::BASICATTACK].Add(0, EAnimationType::BASICATTACK_0);
 	AttackAnimMap[EAttackType::BASICATTACK].Add(1, EAnimationType::BASICATTACK_1);
@@ -320,6 +322,8 @@ void AMyProjectCharacter::BeginPlay()
 	CurStateType = EPlayerState::NONE;
 
 	CombatManager = NewObject<UCombatManager>();
+
+	LookTargetComp->SetController(Cast<APlayerController>(GetController()));
 	
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 	SetSpeed(PlayerDataStruct.OriginSpeed);
@@ -329,6 +333,9 @@ void AMyProjectCharacter::BeginPlay()
 
 	GetCapsuleComponent()->OnComponentBeginOverlap.AddDynamic(this, &AMyProjectCharacter::CapsuleOverlapBegin);
 	GetCapsuleComponent()->OnComponentEndOverlap.AddDynamic(this, &AMyProjectCharacter::CapsuleOverlapEnd);
+
+	TargetDetectionCollison->OnComponentBeginOverlap.AddDynamic(this, &AMyProjectCharacter::OnEnemyDetectionBeginOverlap);
+	TargetDetectionCollison->OnComponentEndOverlap.AddDynamic(this, &AMyProjectCharacter::OnEnemyDetectionEndOverlap);
 
 	for (int8 i = 0; i < AttackCollisionArray.Num(); i++)
 	{
@@ -362,6 +369,53 @@ void AMyProjectCharacter::Look(const FInputActionValue& Value)
 
 	AddControllerYawInput(LookAxisVector.X);
 	AddControllerPitchInput(LookAxisVector.Y);
+}
+
+void AMyProjectCharacter::GetCompsInScreen()
+{
+	FVector2D ScreenLocation;
+	FVector CompLocation;
+	APlayerController* PlayerController = GetWorld()->GetFirstPlayerController();
+	float ViewportSizeX = GEngine->GameViewport->Viewport->GetSizeXY().X;
+	float ViewprotSizeY = GEngine->GameViewport->Viewport->GetSizeXY().Y;
+
+	TargetCompInScreenArray.Empty();
+
+	for (int32 i = 0; i < TargetCompArray.Num(); i++)
+	{
+		CompLocation = TargetCompArray[i]->GetComponentLocation();
+		if (PlayerController->ProjectWorldLocationToScreen(CompLocation, ScreenLocation))
+		{
+			if (ScreenLocation.X > 0 && ScreenLocation.X < ViewportSizeX
+				&& ScreenLocation.Y > 0 && ScreenLocation.Y < ViewprotSizeY)
+			{
+				TargetCompInScreenArray.AddUnique(TargetCompArray[i]);
+			}
+		}
+	}
+}
+
+UPrimitiveComponent* AMyProjectCharacter::GetFirstTarget()
+{
+	TargetComp = nullptr;
+
+	float Distance;
+	float ClosestDistance = 999999999;
+	FVector CompLocation;
+	FVector CameraLocation = FollowCamera->GetComponentLocation();
+	//RayCastOnTargets();
+	for (int32 i = 0; i < TargetCompInScreenArray.Num(); i++)
+	{
+		CompLocation = TargetCompInScreenArray[i]->GetComponentLocation();
+		Distance = FVector::Dist(CameraLocation, CompLocation);
+		if (Distance < ClosestDistance)
+		{
+			ClosestDistance = Distance;
+			TargetComp = TargetCompInScreenArray[i];
+		}
+	}
+
+	return TargetComp;
 }
 
 float AMyProjectCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
@@ -420,9 +474,33 @@ void AMyProjectCharacter::LockOn()
 
 void AMyProjectCharacter::LockOnBegin()
 {
-	AnimInstance->SetLockOn(true);
+	GetCompsInScreen();
+	if (GetFirstTarget())
+	{
+		LockOnEnemy = Cast<AEnemyBase>(TargetComp->GetOwner());
+		LockOnEnemy->GetLockOnWidgetComp()->GetWidget()->SetVisibility(ESlateVisibility::HitTestInvisible);
+		AnimInstance->SetLockOn(true);
+		SetSpeed(PlayerDataStruct.PlayerLockOnMoveSpeed);
+		LookTargetComp->SetTarget(TargetComp);
+		LookTargetComp->Activate();
+		return;
+	}
 
-	SetSpeed(PlayerDataStruct.PlayerLockOnMoveSpeed);
+	LockOn();
+}
+
+void AMyProjectCharacter::LockOnEnd()
+{
+	AnimInstance->SetLockOn(false);
+
+	if (TargetComp) {
+		LockOnEnemy->GetLockOnWidgetComp()->GetWidget()->SetVisibility(ESlateVisibility::Collapsed);
+		LookTargetComp->Deactivate();
+	}
+
+	if (!IsSprint) {
+		SetSpeed(PlayerDataStruct.OriginSpeed);
+	}
 }
 
 void AMyProjectCharacter::ComboAttack()
@@ -439,15 +517,6 @@ void AMyProjectCharacter::ComboAttack()
 	}
 
 	PlayMontageAnimation(AttackAnimMap[CurAttackType][PlayerCurAttackIndex++]);
-}
-
-void AMyProjectCharacter::LockOnEnd()
-{
-	AnimInstance->SetLockOn(false);
-
-	if (!IsSprint) {
-	SetSpeed(PlayerDataStruct.OriginSpeed);
-	}
 }
 
 void AMyProjectCharacter::SprintBegin()
@@ -502,6 +571,18 @@ void AMyProjectCharacter::CapsuleOverlapEnd(UPrimitiveComponent* OverlappedCompo
 	if (InteractionActor == OtherActor) {
 		InteractionActor = nullptr;
 	}
+}
+
+void AMyProjectCharacter::OnEnemyDetectionBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	UE_LOG(LogTemp, Warning, TEXT("In"));
+	TargetCompArray.Add(OtherComp);
+}
+
+void AMyProjectCharacter::OnEnemyDetectionEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+	UE_LOG(LogTemp, Warning, TEXT("Out"));
+	TargetCompArray.Remove(OtherComp);
 }
 
 void AMyProjectCharacter::OnWeaponOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)

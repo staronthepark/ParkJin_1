@@ -9,6 +9,9 @@ AEnemyBase::AEnemyBase()
 	MoveToTargetComp = CreateDefaultSubobject<UEnemyMoveToTargetComponent>(FName("Move to Target Comp"));
 	MoveToTargetComp->SetComponentTickEnabled(false);
 
+	LockOnWidget = CreateDefaultSubobject<UWidgetComponent>("Lock On Widget");
+	LockOnWidget->SetupAttachment(GetMesh(), "Bip001-Spine2");
+
 	for (EMonsterAnimationType AnimType : TEnumRange<EMonsterAnimationType>())
 	{
 		MontageEndEventMap.Add(AnimType, TFunction<void()>());
@@ -48,6 +51,8 @@ void AEnemyBase::BeginPlay()
 
 	Controller = Cast<AAIController>(GetController());
 
+	LockOnWidget->GetWidget()->SetVisibility(ESlateVisibility::Collapsed);
+
 	TArray<UActorComponent*> ActorCompArray = GetComponentsByTag(UPrimitiveComponent::StaticClass(), FName("Patrol"));
 	for (int8 i = 0; i < ActorCompArray.Num(); i++)
 	{
@@ -77,7 +82,8 @@ void AEnemyBase::EventNotify(bool IsBegin)
 void AEnemyBase::HitEvent()
 {
 	Super::HitEvent();
-
+	MoveToTargetComp->Deactivate();
+	GetCharacterMovement()->bAllowPhysicsRotationDuringAnimRootMotion = false;
 	ActivateHitCollision(ECollisionEnabled::NoCollision);
 	EnemyDataStruct.CharacterHp <= 0 ? PlayMontageAnimation(EMonsterAnimationType::DEAD) : PlayMontageAnimation(EMonsterAnimationType::HIT);
 }
