@@ -107,8 +107,6 @@ ENUM_RANGE_BY_FIRST_AND_LAST(EInputType, EInputType::NONE, EInputType::QUIT);
 UENUM(BlueprintType)
 enum class ECameraDirection : uint8
 {
-	UP,
-	DOWN,
 	LEFT,
 	RIGHT
 };

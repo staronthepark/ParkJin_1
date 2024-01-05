@@ -367,8 +367,17 @@ void AMyProjectCharacter::Look(const FInputActionValue& Value)
 {
 	FVector2D LookAxisVector = Value.Get<FVector2D>();
 
+	ChangeTargetValue = LookAxisVector.X;
+
+	if (IsLockOn) {
+		if (FMath::Abs(ChangeTargetValue) >= 1.0f && ChangeTargetTime > 0.5f) {
+		ChangeTarget(ChangeTargetValue > 0 ? ECameraDirection::RIGHT : ECameraDirection::LEFT);
+		}
+		return;
+	}
+
 	AddControllerYawInput(LookAxisVector.X);
-	AddControllerPitchInput(LookAxisVector.Y);
+	AddControllerPitchInput(LookAxisVector.Y);	
 }
 
 void AMyProjectCharacter::GetCompsInScreen()
@@ -381,6 +390,12 @@ void AMyProjectCharacter::GetCompsInScreen()
 
 	TargetCompInScreenArray.Empty();
 
+	FHitResult HitResult;
+
+	FCollisionQueryParams CollisionParams;
+
+	FVector StartLocation = FollowCamera->GetComponentLocation();
+
 	for (int32 i = 0; i < TargetCompArray.Num(); i++)
 	{
 		CompLocation = TargetCompArray[i]->GetComponentLocation();
@@ -389,7 +404,11 @@ void AMyProjectCharacter::GetCompsInScreen()
 			if (ScreenLocation.X > 0 && ScreenLocation.X < ViewportSizeX
 				&& ScreenLocation.Y > 0 && ScreenLocation.Y < ViewprotSizeY)
 			{
-				TargetCompInScreenArray.AddUnique(TargetCompArray[i]);
+				CollisionParams.AddIgnoredActor(TargetCompArray[i]->GetOwner());
+				if (!GetWorld()->LineTraceSingleByChannel(HitResult, StartLocation, CompLocation, ECC_Visibility, CollisionParams))
+				{
+					TargetCompInScreenArray.AddUnique(TargetCompArray[i]);
+				}
 			}
 		}
 	}
@@ -403,7 +422,7 @@ UPrimitiveComponent* AMyProjectCharacter::GetFirstTarget()
 	float ClosestDistance = 999999999;
 	FVector CompLocation;
 	FVector CameraLocation = FollowCamera->GetComponentLocation();
-	//RayCastOnTargets();
+
 	for (int32 i = 0; i < TargetCompInScreenArray.Num(); i++)
 	{
 		CompLocation = TargetCompInScreenArray[i]->GetComponentLocation();
@@ -417,6 +436,52 @@ UPrimitiveComponent* AMyProjectCharacter::GetFirstTarget()
 
 	return TargetComp;
 }
+
+void AMyProjectCharacter::ChangeTarget(ECameraDirection CamDirection)
+{
+	GetCompsInScreen();
+	TargetCompInScreenArray.Remove(TargetComp);
+
+	FVector TargetVector = TargetComp->GetComponentLocation();
+
+	FVector ActorLocation = GetActorLocation();
+	FVector TargetDir = (TargetVector - ActorLocation).GetSafeNormal();
+	TArray<UPrimitiveComponent*> TargetArray;
+
+	for (int32 i = 0; i < TargetCompInScreenArray.Num(); i++)
+	{
+		FVector Direction = (TargetCompInScreenArray[i]->GetComponentLocation() - ActorLocation).GetSafeNormal();
+		FVector Cross = FVector::CrossProduct(TargetDir, Direction);
+
+		if ((CamDirection == ECameraDirection::LEFT && Cross.Z < 0.f)
+			|| (CamDirection == ECameraDirection::RIGHT && Cross.Z > 0.f))
+		{
+			TargetArray.Add(TargetCompInScreenArray[i]);
+		}
+	}
+
+
+	if (TargetArray.Num() < 1)return;
+	int32 TargetIdx = 0;
+
+	for (int32 i = 1; i < TargetArray.Num(); i++)
+	{
+		float TargetDot = FVector::DotProduct(TargetDir, (TargetArray[TargetIdx]->GetComponentLocation() - ActorLocation).GetSafeNormal());
+		float NextDot = FVector::DotProduct(TargetDir, (TargetArray[i]->GetComponentLocation() - ActorLocation).GetSafeNormal());
+
+		if (NextDot > TargetDot) {
+			TargetIdx = i;
+		}
+	}
+
+	LockOnEnemy->GetLockOnWidgetComp()->GetWidget()->SetVisibility(ESlateVisibility::Collapsed);	
+	TargetComp = TargetArray[TargetIdx];
+	SetLockOnTarget();
+	ChangeTargetTime = 0.0f;
+
+	TargetArray.Empty();
+}
+
 
 float AMyProjectCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
@@ -452,6 +517,8 @@ void AMyProjectCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	ChangeTargetTime += DeltaTime;
+
 	AnimInstance->SetSpeed(GetVelocity().Length());
 
 	AnimInstance->SetAxisX(FMath::Lerp(AnimInstance->GetAxisX(), MovementVector.X, fDeltaTime * 10.0f));
@@ -477,12 +544,7 @@ void AMyProjectCharacter::LockOnBegin()
 	GetCompsInScreen();
 	if (GetFirstTarget())
 	{
-		LockOnEnemy = Cast<AEnemyBase>(TargetComp->GetOwner());
-		LockOnEnemy->GetLockOnWidgetComp()->GetWidget()->SetVisibility(ESlateVisibility::HitTestInvisible);
-		AnimInstance->SetLockOn(true);
-		SetSpeed(PlayerDataStruct.PlayerLockOnMoveSpeed);
-		LookTargetComp->SetTarget(TargetComp);
-		LookTargetComp->Activate();
+		SetLockOnTarget();
 		return;
 	}
 
@@ -501,6 +563,17 @@ void AMyProjectCharacter::LockOnEnd()
 	if (!IsSprint) {
 		SetSpeed(PlayerDataStruct.OriginSpeed);
 	}
+}
+
+void AMyProjectCharacter::SetLockOnTarget()
+{
+	TargetCompInScreenArray.Remove(TargetComp);
+	LockOnEnemy = Cast<AEnemyBase>(TargetComp->GetOwner());
+	LockOnEnemy->GetLockOnWidgetComp()->GetWidget()->SetVisibility(ESlateVisibility::HitTestInvisible);
+	AnimInstance->SetLockOn(true);
+	SetSpeed(PlayerDataStruct.PlayerLockOnMoveSpeed);
+	LookTargetComp->SetTarget(TargetComp);
+	LookTargetComp->Activate();
 }
 
 void AMyProjectCharacter::ComboAttack()
@@ -575,13 +648,11 @@ void AMyProjectCharacter::CapsuleOverlapEnd(UPrimitiveComponent* OverlappedCompo
 
 void AMyProjectCharacter::OnEnemyDetectionBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	UE_LOG(LogTemp, Warning, TEXT("In"));
 	TargetCompArray.Add(OtherComp);
 }
 
 void AMyProjectCharacter::OnEnemyDetectionEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Out"));
 	TargetCompArray.Remove(OtherComp);
 }
 

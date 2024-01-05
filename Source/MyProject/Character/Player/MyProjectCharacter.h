@@ -227,11 +227,11 @@ class AMyProjectCharacter : public ABaseCharacter
 	float DiagonalSpeed;
 	float ShieldDashSpeed;
 	float CameraDistanceToPlayer;
+
 	float ChangeTargetTime;
+	float ChangeTargetValue;
+
 	float TargetOpacity;
-	float ForwardMovementValue;
-	float RightMovementValue;
-	float HeadYawRoation;
 
 	bool IsCollisionCamera;
 	bool CanExecution;
@@ -336,9 +336,7 @@ public:
 
 	UPrimitiveComponent* GetFirstTarget();
 
-	void ChangeTarget(ECameraDirection Direction) {}
-
-	void RayCastOnTargets() {}
+	void ChangeTarget(ECameraDirection Direction);
 
 	void ShoulderView(bool Value) {}
 
@@ -377,6 +375,8 @@ public:
 	void LockOnBegin();
 	void LockOn();
 	void LockOnEnd();
+
+	void SetLockOnTarget();
 
 	void SprintBegin();
 	void SprintEnd();
