@@ -1,27 +1,60 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "MyObjectPool.h"
 
-// Sets default values
+AMyObjectPool*  AMyObjectPool::Instance = nullptr;
+
 AMyObjectPool::AMyObjectPool()
 {
- 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
-
 }
 
-// Called when the game starts or when spawned
 void AMyObjectPool::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	Init();
+
+	Instance = this;
 }
 
-// Called every frame
-void AMyObjectPool::Tick(float DeltaTime)
+AMyObjectPool& AMyObjectPool::GetInstance()
 {
-	Super::Tick(DeltaTime);
-
+	return *Instance;
 }
 
+void AMyObjectPool::Init()
+{
+	UWorld* World = GetWorld();
+
+	for (int8 i = 0; i < ObjectArray.Num(); i++)
+	{
+		ObjectMap.Add(ObjectArray[i].Type, TArray<ABaseDynamicObject*>());
+		for (int8 j = 0; j < ObjectArray[j].CreateCount; j++)
+		{
+			ABaseDynamicObject* NewObj = World->SpawnActor<ABaseDynamicObject>(ObjectArray[i].StaticClass);
+			NewObj->SetObjectType(ObjectArray[i].Type);
+			ObjectMap[ObjectArray[i].Type].Add(NewObj);
+		}
+	}
+
+	ObjectArray.Empty();
+}
+
+void AMyObjectPool::SpawnObject(FVector Location, FRotator Rotation, EObjectType Type)
+{
+	ABaseDynamicObject* Object = nullptr;
+
+	if (ObjectMap[Type].Num() <= 1) {
+		UWorld* World = GetWorld();
+		World->SpawnActor<ABaseDynamicObject>(ObjectMap[Type][0]->StaticClass());
+		ObjectMap[Type].Add(World->SpawnActor<ABaseDynamicObject>(ObjectMap[Type][0]->StaticClass()));
+	}
+
+	Object = ObjectMap[Type].Pop();
+	Object->Activate();
+	Object->SetActorLocation(Location);
+	Object->SetActorRotation(Rotation);	
+}
+
+void AMyObjectPool::ReturnObject(EObjectType Type, ABaseDynamicObject* Object)
+{
+	ObjectMap[Type].Push(Object);
+}

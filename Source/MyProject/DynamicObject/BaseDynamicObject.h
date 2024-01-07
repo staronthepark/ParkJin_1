@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "../Flag/Enums.h"
 #include "BaseDynamicObject.generated.h"
 
 UCLASS()
@@ -11,16 +12,22 @@ class MYPROJECT_API ABaseDynamicObject : public AActor
 {
 	GENERATED_BODY()
 	
+protected:
+	FTimerHandle Timer;
+
+	EObjectType Type;
+
+	UPROPERTY(Editanywhere)
+	float LifeTime;
+
+
 public:	
-	// Sets default values for this actor's properties
 	ABaseDynamicObject();
 
-protected:
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
+	virtual void BeginPlay();
+	virtual void Activate() {}
+	virtual void Deactivate() {}
+	virtual void ReturnObject();
 
-public:	
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
-
+	inline void SetObjectType(EObjectType _Type) { Type = _Type; }
 };

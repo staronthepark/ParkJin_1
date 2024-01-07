@@ -119,3 +119,15 @@ enum class EAttackType : uint8
 	POWERATTACK,
 	SKILLATTACK,
 };
+
+UENUM(BlueprintType)
+enum class EObjectType : uint8
+{
+	NONE,
+	VFX_HIT,
+	VFX_BLOOD,
+	SFX_BLOOD,
+	SFX_SWING,
+	SFX_BOOM,
+	LAST,
+};
