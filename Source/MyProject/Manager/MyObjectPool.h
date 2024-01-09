@@ -35,7 +35,6 @@ class MYPROJECT_API AMyObjectPool : public AActor
 	static AMyObjectPool* Instance;
 
 public:	
-	AMyObjectPool();
 
 	static AMyObjectPool& GetInstance();
 

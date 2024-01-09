@@ -32,5 +32,6 @@ void ADynamicSFXObject::Deactivate()
 void ADynamicSFXObject::ReturnObject()
 {
 	Super::ReturnObject();
+	GetWorldTimerManager().ClearTimer(Timer);
 	AudioComp->Stop();
 }

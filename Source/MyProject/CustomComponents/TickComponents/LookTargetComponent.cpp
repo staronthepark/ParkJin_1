@@ -3,6 +3,7 @@
 ULookTargetComponent::ULookTargetComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
+	bAutoActivate = false;
 }
 
 

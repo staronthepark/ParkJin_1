@@ -13,6 +13,7 @@ void ABaseDynamicObject::BeginPlay()
 
 void ABaseDynamicObject::ReturnObject()
 {
+	GetWorldTimerManager().ClearTimer(Timer);
 	Deactivate();
 	AMyObjectPool::GetInstance().ReturnObject(Type, this);
 }

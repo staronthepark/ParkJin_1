@@ -83,6 +83,7 @@ public:
 		GetMesh()->bPauseAnims = true;
 		GetWorldTimerManager().SetTimer(HitStopTimer, [this]() {
 			GetMesh()->bPauseAnims = false;
+			GetWorldTimerManager().ClearTimer(HitStopTimer);
 			}, HitStopTime, false);
 	}
 

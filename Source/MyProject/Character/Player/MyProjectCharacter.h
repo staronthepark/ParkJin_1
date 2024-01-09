@@ -14,7 +14,7 @@
 #include "../../AnimInstance/PlayerAnimInstance.h"
 #include "../../InteractionActor/BaseInteractionActor.h"
 #include "../../Manager/CombatManager.h"
-#include "../../TickComponents/LookTargetComponent.h"
+#include "../../CustomComponents/TickComponents/LookTargetComponent.h"
 //#include "../UI/PlayerHUD.h"
 //#include "../UI/UserSettingUI.h"
 #include "MyProjectCharacter.generated.h"

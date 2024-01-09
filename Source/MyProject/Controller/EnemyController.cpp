@@ -38,6 +38,7 @@ void AEnemyController::OnTargetDetected(AActor* Actor, FAIStimulus const Stimulu
 	{
 		if (Stimulus.WasSuccessfullySensed()) {
 			Owner->DetectPlayer(Actor);
+			Owner->ActiavteMovetoTargetComp();
 		}
 		else {
 			Owner->UnDetectPlayer();

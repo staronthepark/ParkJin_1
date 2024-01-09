@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "../Character/BaseCharacter.h"
+#include "../../Character/BaseCharacter.h"
 #include "LookTargetComponent.generated.h"
 
 

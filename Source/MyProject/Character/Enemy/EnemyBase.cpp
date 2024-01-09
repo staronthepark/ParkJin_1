@@ -7,10 +7,13 @@ AEnemyBase::AEnemyBase()
 	Stimulus->RegisterWithPerceptionSystem();
 
 	MoveToTargetComp = CreateDefaultSubobject<UEnemyMoveToTargetComponent>(FName("Move to Target Comp"));
-	MoveToTargetComp->SetComponentTickEnabled(false);
+
+	MoveToLocationComp = CreateDefaultSubobject<UMoveToLocationComponent>(FName("Move to Location Comp"));
 
 	LockOnWidget = CreateDefaultSubobject<UWidgetComponent>("Lock On Widget");
 	LockOnWidget->SetupAttachment(GetMesh(), "Bip001-Spine2");
+
+	StartAnimType = EMonsterAnimationType::NONE;
 
 	for (EMonsterAnimationType AnimType : TEnumRange<EMonsterAnimationType>())
 	{
@@ -51,20 +54,34 @@ void AEnemyBase::BeginPlay()
 
 	Controller = Cast<AAIController>(GetController());
 
+
 	LockOnWidget->GetWidget()->SetVisibility(ESlateVisibility::Collapsed);
 
-	TArray<UActorComponent*> ActorCompArray = GetComponentsByTag(UPrimitiveComponent::StaticClass(), FName("Patrol"));
-	for (int8 i = 0; i < ActorCompArray.Num(); i++)
+	if (StartAnimType == EMonsterAnimationType::STANDBY) {
+	PlayMontageAnimation(StartAnimType);
+	}
+
+	for (int8 i = 0; i < PatrolActorArray.Num(); i++)
 	{
-		PatrolPositionArray.Add(Cast<UPrimitiveComponent>(ActorCompArray[i]));
+		PatrolLocationArray.Add(PatrolActorArray[i]->GetActorLocation());
+		PatrolActorArray[i]->Destroy();
+	}
+
+	PatrolActorArray.Empty();
+
+	if (PatrolLocationArray.Num() > 0) {
+		StartPatrol();
 	}
 
 	for (int8 i = 0; i < AttackCollisionArray.Num(); i++)
 	{
 		AttackCollisionArray[i]->OnComponentBeginOverlap.AddDynamic(this, &AEnemyBase::OnWeaponOverlapBegin);
 	}
-
+	//EPathFollowingResult
 	AnimInstance->OnMontageEnded.AddDynamic(this, &AEnemyBase::MontageEnded);
+
+	Controller->ReceiveMoveCompleted.AddDynamic(this, &AEnemyBase::ArriveTargetLocation);
+	Controller->GetPathFollowingComponent()->OnRequestFinished.AddUFunction(this, FName("ArriveTargetLocation"));
 }
 
 void AEnemyBase::Tick(float DeltaTime)
@@ -107,7 +124,13 @@ void AEnemyBase::AttackTriggerBeginEvent(AActor* TargetActor)
 
 void AEnemyBase::AttackTriggerEndEvent()
 {
-	MoveToTargetComp->Activate();
+	ActiavteMovetoTargetComp();
+}
+
+void AEnemyBase::StartPatrol()
+{
+	MoveToLocationComp->SetLocation(PatrolLocationArray[CurPatrolIndex]);
+	ActiavteMovetoLocationComp();
 }
 
 void AEnemyBase::StartAttack()
@@ -115,7 +138,7 @@ void AEnemyBase::StartAttack()
 	if (AnimInstance->IsAnyMontagePlaying()) {
 		return;
 	}
-	MoveToTargetComp->Activate();
+	ActiavteMovetoTargetComp();
 	GetCharacterMovement()->bAllowPhysicsRotationDuringAnimRootMotion = true;
 	AnimInstance->Montage_Play(CurrentAttackMontage);
 }
@@ -124,7 +147,6 @@ void AEnemyBase::DetectPlayer(AActor* TargetActor)
 {
 	Target = TargetActor;
 	MoveToTargetComp->SetTarget(TargetActor);
-
 	IsDetect = true;
 }
 
@@ -132,12 +154,21 @@ void AEnemyBase::UnDetectPlayer()
 {
 	IsDetect = false;
 
-	if (PatrolPositionArray.Num() > 0) {
-		Controller->MoveToLocation(PatrolPositionArray[CurPatrolIndex]->GetComponentLocation());
+	if (PatrolLocationArray.Num() > 0) {
+		StartPatrol();
 		return;
 	}
 
-	Controller->MoveToLocation(SpawnLocation);
+	MoveToLocationComp->SetLocation(SpawnLocation);
+	ActiavteMovetoLocationComp();
+}
+
+void AEnemyBase::ArriveTargetLocation(FAIRequestID RequestID, EPathFollowingResult::Type MovementResult)
+{
+	if (MovementResult == EPathFollowingResult::Success && PatrolLocationArray.Num() > 0) {
+		CurPatrolIndex < PatrolLocationArray.Num() - 1 ? CurPatrolIndex += 1 : CurPatrolIndex = 0;
+		StartPatrol();
+	}
 }
 
 void AEnemyBase::PlayMontageAnimation(EMonsterAnimationType type)
@@ -152,7 +183,7 @@ void AEnemyBase::MontageEnded(UAnimMontage* Montage, bool bInterrupted)
 		GetCharacterMovement()->bAllowPhysicsRotationDuringAnimRootMotion = false;
 
 		if (FVector::Dist(Target->GetActorLocation(), GetActorLocation()) > 150.0f) {
-			MoveToTargetComp->Activate();
+			ActiavteMovetoTargetComp();
 			return;
 		}
 

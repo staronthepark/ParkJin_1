@@ -35,7 +35,7 @@ void ADynamicVFXObject::Deactivate()
 void ADynamicVFXObject::ReturnObject()
 {
 	Super::ReturnObject();
-
+	GetWorldTimerManager().ClearTimer(Timer);
 	for (int8 i = 0; i < ComponentArray.Num(); i++)
 	{
 		ComponentArray[i]->SetActive(false);

@@ -3,6 +3,7 @@
 UEnemyMoveToTargetComponent::UEnemyMoveToTargetComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
+	bAutoActivate = false;
 }
 
 void UEnemyMoveToTargetComponent::BeginPlay()

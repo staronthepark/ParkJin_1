@@ -20,6 +20,7 @@ void UEnemyAttackTrigger::CoolDownEnd()
 		Owner->SetAnimType(AnimationType);
 		Owner->StartAttack();
 	}
+	GetWorld()->GetTimerManager().ClearTimer(Timer);
 }
 
 void UEnemyAttackTrigger::CoolDownStart()

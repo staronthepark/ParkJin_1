@@ -24,7 +24,7 @@ protected:
 public:	
 	ABaseDynamicObject();
 
-	virtual void BeginPlay();
+	virtual void BeginPlay();	
 	virtual void Activate() {}
 	virtual void Deactivate() {}
 	virtual void ReturnObject();

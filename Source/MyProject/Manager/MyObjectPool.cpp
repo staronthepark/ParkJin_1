@@ -2,10 +2,6 @@
 
 AMyObjectPool*  AMyObjectPool::Instance = nullptr;
 
-AMyObjectPool::AMyObjectPool()
-{
-}
-
 void AMyObjectPool::BeginPlay()
 {
 	Super::BeginPlay();

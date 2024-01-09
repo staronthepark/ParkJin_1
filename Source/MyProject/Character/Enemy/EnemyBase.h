@@ -3,7 +3,8 @@
 #include "CoreMinimal.h"
 #include "AIController.h"
 #include "../BaseCharacter.h"
-#include "../../TickComponents/EnemyMoveToTargetComponent.h"
+#include "../../CustomComponents/TickComponents/EnemyMoveToTargetComponent.h"
+#include "../../CustomComponents/TickComponents/MoveToLocationComponent.h"
 #include "../../AnimInstance/EnemyAnimInstance.h"
 #include "Perception/AIPerceptionStimuliSourceComponent.h"
 #include "Components/WidgetComponent.h"
@@ -15,7 +16,6 @@ enum class EMonsterAnimationType : uint8
 {
 	NONE,
 	STANDBY,
-	IDLE,
 	HIT,
 	DEAD,
 	ATTACK_0,
@@ -101,10 +101,19 @@ protected:
 	UEnemyMoveToTargetComponent* MoveToTargetComp;
 
 	UPROPERTY(Editanywhere, meta = (AllowPrivateAccess = true))
+	UMoveToLocationComponent* MoveToLocationComp;
+
+	UPROPERTY(Editanywhere, meta = (AllowPrivateAccess = true))
 	FEnemyDataStruct EnemyDataStruct;
 
 	UPROPERTY(Editanywhere)
 	UWidgetComponent* LockOnWidget;
+
+	UPROPERTY(Editanywhere)
+	TArray<AActor*>PatrolActorArray;
+
+	UPROPERTY(Editanywhere)
+	EMonsterAnimationType StartAnimType;
 
 	UPROPERTY()
 	UAnimMontage* NextAttackMontage;
@@ -112,21 +121,20 @@ protected:
 	UPROPERTY()
 	UAnimMontage* CurrentAttackMontage;
 
-
 	AAIController* Controller;
 
 	AActor* Target;
 
 	EMonsterAnimationType CurAnimType;
-	EMonsterAnimationType StartAnimType;
+
 
 	bool Acting;
 	bool IsDetect;
 
-	uint8 CurPatrolIndex;
+	int8 CurPatrolIndex;
 
 	//TMap<int, TFunction<void()>> MonsterMoveMap;
-	TArray<UPrimitiveComponent*> PatrolPositionArray;
+	TArray<FVector> PatrolLocationArray;
 	TMap<EMonsterAnimationType, TFunction<void()>>MontageEndEventMap;
 	TMap<EMonsterAnimationType, TMap<bool, TFunction<void()>>> NotifyEventMap;
 	TMap<EMonsterActionType, TFunction<void()>> MonsterTickEventMap;
@@ -138,13 +146,27 @@ public:
 	AEnemyBase();
 
 	void AttackTriggerBeginEvent(AActor* TargetActor);
+
 	void AttackTriggerEndEvent();
+
+	void StartPatrol();
 
 	void StartAttack();
 
 	void DetectPlayer(AActor * TargetActor);
+
 	void UnDetectPlayer();
 
+	void ActiavteMovetoTargetComp() { 
+		MoveToLocationComp->Deactivate();
+		MoveToTargetComp->Activate();
+	}
+
+	void ActiavteMovetoLocationComp() {
+		MoveToTargetComp->Deactivate();
+		MoveToLocationComp->Activate();
+	}
+	
 	void SetAttackMontage(UAnimMontage* montage) { AnimInstance->IsAnyMontagePlaying() ? NextAttackMontage = montage : CurrentAttackMontage = montage; }
 
 	virtual void PlayMontageAnimation(EMonsterAnimationType type);
@@ -159,6 +181,9 @@ public:
 	inline EMonsterAnimationType GetAnimType() { return CurAnimType; }
 	inline void SetAnimType(EMonsterAnimationType Type) { CurAnimType = Type; }
 	inline UWidgetComponent* GetLockOnWidgetComp() { return LockOnWidget; }
+
+	UFUNCTION()
+	void ArriveTargetLocation(FAIRequestID RequestID, EPathFollowingResult::Type MovementResult);
 
 	UFUNCTION()
 	void MontageEnded(UAnimMontage* Montage, bool bInterrupted);
